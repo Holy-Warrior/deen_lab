@@ -1,0 +1,15 @@
+class GroqConfig {
+  const GroqConfig._();
+
+  // Replace this with your real Groq API key before using the AI feature tab.
+  static const String apiKey = 'PASTE_GROQ_API_KEY_HERE';
+
+  // Official Groq base URL from the docs.
+  static const String baseUrl = 'https://api.groq.com/openai/v1';
+
+  // You can change the model if you prefer a different Groq model.
+  static const String model = 'llama-3.3-70b-versatile';
+
+  static bool get isConfigured =>
+      apiKey.isNotEmpty && apiKey != 'PASTE_GROQ_API_KEY_HERE';
+}
