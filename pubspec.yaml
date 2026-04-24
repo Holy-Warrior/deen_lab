@@ -21,6 +21,16 @@ dependencies:
   geocoding: ^3.0.0
   flutter_compass: ^0.8.1
   shared_preferences: ^2.2.2
+  webview_flutter: ^4.13.1
+
+
+  widget_git_release_checker:
+    git:
+      url: https://github.com/Holy-Warrior/widget_git_release_checker.git
+
+  silence_of_salah_engine:
+    git:
+      url: https://github.com/Holy-Warrior/silence_of_salah_engine.git
 
 dev_dependencies:
   flutter_test:
