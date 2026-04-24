@@ -1,3 +1,5 @@
+import 'package:deen_lab/features/feature_studio/ui/feature_studio_tab.dart';
+import 'package:deen_lab/features/feature_studio/ui/generated_feature_webview_tab.dart';
 import 'package:deen_lab/features/hadees/ui/hadees_tab.dart';
 import 'package:deen_lab/features/prayer_times/prayer_time_tab.dart';
 import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
@@ -7,11 +9,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'tab_model_and_controller.dart';
-
+import 'widgets/tab_box_view.dart';
+import 'widgets/tab_button_view.dart';
 import 'widgets/tab_list_view.dart';
 import 'widgets/tab_text_view.dart';
-import 'widgets/tab_button_view.dart';
-import 'widgets/tab_box_view.dart';
 
 class TabScreen extends StatelessWidget {
   const TabScreen({super.key});
@@ -71,6 +72,8 @@ class _TabScreenBodyState extends State<_TabScreenBody>
         return const QuranTab();
       case TabType.hadees:
         return const HadeesTab();
+      case TabType.generatedFeature:
+        return GeneratedFeatureWebViewTab(feature: tab.generatedFeature!);
       case TabType.list:
         return const TabListView();
       case TabType.text:
@@ -80,15 +83,7 @@ class _TabScreenBodyState extends State<_TabScreenBody>
       case TabType.box:
         return const TabBoxView();
       case TabType.addNew:
-        return Center(
-          child: FilledButton.icon(
-            onPressed: () {
-              context.read<DeenLabTabController>().addNewTab();
-            },
-            icon: const Icon(Icons.add),
-            label: const Text("Create New Tab"),
-          ),
-        );
+        return const FeatureStudioTab();
     }
   }
 
@@ -112,7 +107,7 @@ class _TabScreenBodyState extends State<_TabScreenBody>
           onTap: (index) {
             context.read<DeenLabTabController>().setIndex(index);
           },
-          tabs: tabs.map((t) => Tab(text: t.title)).toList(),
+          tabs: tabs.map((tab) => Tab(text: tab.title)).toList(),
         ),
       ),
       body: TabBarView(
