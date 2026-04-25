@@ -18,12 +18,22 @@ class PrayerList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prayers = [("Fajr", fajr), ("Dhuhr", dhuhr), ("Asr", asr), ("Maghrib", maghrib), ("Isha", isha)];
+    final prayers = [
+      ("Fajr", fajr),
+      ("Dhuhr", dhuhr),
+      ("Asr", asr),
+      ("Maghrib", maghrib),
+      ("Isha", isha),
+    ];
 
     return Column(
       children: prayers.map((p) {
         return Card(
-          child: ListTile(leading: const Icon(Icons.access_time), title: Text(p.$1), trailing: Text(p.$2)),
+          child: ListTile(
+            leading: const Icon(Icons.access_time),
+            title: Text(p.$1),
+            trailing: Text(p.$2),
+          ),
         );
       }).toList(),
     );

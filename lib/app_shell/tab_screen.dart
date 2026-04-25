@@ -7,6 +7,7 @@ import 'package:deen_lab/features/quran/ui/quran_tab.dart';
 import 'package:deen_lab/features/sehri_iftari/ui/sehri_iftari_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:widget_git_release_checker/widget_git_release_checker.dart';
 
 import 'tab_model_and_controller.dart';
 import 'widgets/tab_box_view.dart';
@@ -19,10 +20,7 @@ class TabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => DeenLabTabController(),
-      child: const _TabScreenBody(),
-    );
+    return ChangeNotifierProvider(create: (_) => DeenLabTabController(), child: const _TabScreenBody());
   }
 }
 
@@ -33,8 +31,7 @@ class _TabScreenBody extends StatefulWidget {
   State<_TabScreenBody> createState() => _TabScreenBodyState();
 }
 
-class _TabScreenBodyState extends State<_TabScreenBody>
-    with TickerProviderStateMixin {
+class _TabScreenBodyState extends State<_TabScreenBody> with TickerProviderStateMixin {
   TabController? _tabController;
   int _currentLength = 0;
 
@@ -101,19 +98,34 @@ class _TabScreenBodyState extends State<_TabScreenBody>
     return Scaffold(
       appBar: AppBar(
         title: const Text('DeenLab'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          onTap: (index) {
-            context.read<DeenLabTabController>().setIndex(index);
-          },
-          tabs: tabs.map((tab) => Tab(text: tab.title)).toList(),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(88),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: WidgetGitReleaseChecker(
+                  user: 'Holy-Warrior',
+                  repo: 'deen_lab',
+                  currentRelease: 'v1.0.0',
+                  filterOutPreRelease: true,
+                  showLoading: false,
+                ),
+              ),
+              TabBar(
+                controller: _tabController,
+                isScrollable: true,
+                onTap: (index) {
+                  context.read<DeenLabTabController>().setIndex(index);
+                },
+                tabs: tabs.map((tab) => Tab(text: tab.title)).toList(),
+              ),
+            ],
+          ),
         ),
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: tabs.map(_buildTabContent).toList(),
-      ),
+      body: TabBarView(controller: _tabController, children: tabs.map(_buildTabContent).toList()),
     );
   }
 }

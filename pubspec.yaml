@@ -1,5 +1,6 @@
 name: deen_lab
 description: "An adaptive Islamic platform for personalized tools and worship assistance."
+publish_to: "none"
 
 version: 1.0.0+1
 
