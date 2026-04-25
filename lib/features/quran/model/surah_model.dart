@@ -4,7 +4,12 @@ class Surah {
   final String englishName;
   final int ayahCount;
 
-  Surah({required this.number, required this.name, required this.englishName, required this.ayahCount});
+  Surah({
+    required this.number,
+    required this.name,
+    required this.englishName,
+    required this.ayahCount,
+  });
 
   factory Surah.fromJson(Map<String, dynamic> json) {
     return Surah(

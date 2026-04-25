@@ -10,9 +10,6 @@ import 'package:provider/provider.dart';
 import 'package:widget_git_release_checker/widget_git_release_checker.dart';
 
 import 'tab_model_and_controller.dart';
-import 'widgets/tab_box_view.dart';
-import 'widgets/tab_button_view.dart';
-import 'widgets/tab_list_view.dart';
 import 'widgets/tab_text_view.dart';
 
 class TabScreen extends StatelessWidget {
@@ -20,7 +17,10 @@ class TabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => DeenLabTabController(), child: const _TabScreenBody());
+    return ChangeNotifierProvider(
+      create: (_) => DeenLabTabController(),
+      child: const _TabScreenBody(),
+    );
   }
 }
 
@@ -31,7 +31,8 @@ class _TabScreenBody extends StatefulWidget {
   State<_TabScreenBody> createState() => _TabScreenBodyState();
 }
 
-class _TabScreenBodyState extends State<_TabScreenBody> with TickerProviderStateMixin {
+class _TabScreenBodyState extends State<_TabScreenBody>
+    with TickerProviderStateMixin {
   TabController? _tabController;
   int _currentLength = 0;
 
@@ -54,6 +55,10 @@ class _TabScreenBodyState extends State<_TabScreenBody> with TickerProviderState
       );
 
       _currentLength = tabs.length;
+    } else if (_tabController != null &&
+        _tabController!.index !=
+            tabCtrl.targetIndex.clamp(0, tabs.length - 1)) {
+      _tabController!.animateTo(tabCtrl.targetIndex.clamp(0, tabs.length - 1));
     }
   }
 
@@ -71,14 +76,8 @@ class _TabScreenBodyState extends State<_TabScreenBody> with TickerProviderState
         return const HadeesTab();
       case TabType.generatedFeature:
         return GeneratedFeatureWebViewTab(feature: tab.generatedFeature!);
-      case TabType.list:
-        return const TabListView();
       case TabType.text:
         return const TabTextView();
-      case TabType.button:
-        return const TabButtonView();
-      case TabType.box:
-        return const TabBoxView();
       case TabType.addNew:
         return const FeatureStudioTab();
     }
@@ -125,7 +124,10 @@ class _TabScreenBodyState extends State<_TabScreenBody> with TickerProviderState
           ),
         ),
       ),
-      body: TabBarView(controller: _tabController, children: tabs.map(_buildTabContent).toList()),
+      body: TabBarView(
+        controller: _tabController,
+        children: tabs.map(_buildTabContent).toList(),
+      ),
     );
   }
 }
