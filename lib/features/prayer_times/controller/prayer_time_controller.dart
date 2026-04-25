@@ -77,7 +77,7 @@ class PrayerTimeController extends ChangeNotifier {
 
   Future<void> syncPrayerAutomation() async {
     try {
-      await _automationService.syncAlarmsOnly(prayerTimes: data);
+      await _automationService.syncRemindersOnly(prayerTimes: data);
     } catch (_) {
       // Keep prayer-time UX stable even if native automation sync fails.
     }

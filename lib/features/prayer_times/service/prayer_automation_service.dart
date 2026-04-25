@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:silence_of_salah_engine/silence_of_salah_engine.dart';
 
@@ -88,6 +89,9 @@ class PrayerAutomationSettings {
 class PrayerAutomationService {
   static const String _settingsKey = 'prayer_automation_settings_v1';
   static const Duration _prePrayerOffset = Duration(minutes: 3);
+  static const MethodChannel _reminderChannel = MethodChannel(
+    'deen_lab/prayer_reminders',
+  );
 
   Future<PrayerAutomationSettings> loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
@@ -120,22 +124,14 @@ class PrayerAutomationService {
     required PrayerAutomationSettings settings,
     required PrayerTimeModel? prayerTimes,
   }) async {
-    if (settings.engineEnabled) {
-      await SilenceOfSalahEngine.startNativeTask(
-        args: <String, dynamic>{'reason': 'prayer_times_settings'},
-      );
-    } else {
-      await SilenceOfSalahEngine.stopNativeTask();
-      await SilenceOfSalahEngine.cancelAllAlarms();
-      return;
-    }
-
-    await _syncAlarms(settings: settings, prayerTimes: prayerTimes);
+    await _syncReminders(settings: settings, prayerTimes: prayerTimes);
   }
 
-  Future<void> syncAlarmsOnly({required PrayerTimeModel? prayerTimes}) async {
+  Future<void> syncRemindersOnly({
+    required PrayerTimeModel? prayerTimes,
+  }) async {
     final settings = await loadSettings();
-    await _syncAlarms(settings: settings, prayerTimes: prayerTimes);
+    await _syncReminders(settings: settings, prayerTimes: prayerTimes);
   }
 
   Future<void> requestAllRelevantPermissions() async {
@@ -145,35 +141,58 @@ class PrayerAutomationService {
     await SilenceOfSalahEngine.requestBatteryOptimization();
   }
 
-  Future<void> _syncAlarms({
+  Future<Map<Object?, Object?>> getPermissionStatus() async {
+    return SilenceOfSalahEngine.getPermissionStatus();
+  }
+
+  Future<bool> areAllPermissionsGranted() async {
+    final status = await getPermissionStatus();
+    return status['allGranted'] == true;
+  }
+
+  Future<void> _syncReminders({
     required PrayerAutomationSettings settings,
     required PrayerTimeModel? prayerTimes,
   }) async {
-    if (!settings.engineEnabled ||
-        !settings.notificationsEnabled ||
-        prayerTimes == null) {
-      await SilenceOfSalahEngine.cancelAllAlarms();
+    if (!settings.notificationsEnabled || prayerTimes == null) {
+      await _cancelAllReminders();
       return;
     }
 
-    final alarms = _buildReminderAlarms(
+    final permissionStatus = await getPermissionStatus();
+    if (permissionStatus['notifications'] != true ||
+        permissionStatus['exactAlarm'] != true) {
+      await _cancelAllReminders();
+      return;
+    }
+
+    final reminders = await _buildReminderAlarms(
+      settings: settings,
       prayerTimes: prayerTimes,
-      prayerEnabled: settings.prayerEnabled,
     );
 
-    if (alarms.isEmpty) {
-      await SilenceOfSalahEngine.cancelAllAlarms();
+    if (reminders.isEmpty) {
+      await _cancelAllReminders();
       return;
     }
 
-    await SilenceOfSalahEngine.scheduleDailyAlarms(alarms);
+    await _reminderChannel.invokeListMethod<Object?>(
+      'scheduleDailyReminders',
+      reminders,
+    );
   }
 
-  List<Map<String, Object?>> _buildReminderAlarms({
+  Future<void> _cancelAllReminders() async {
+    await _reminderChannel.invokeMethod<bool>('cancelAllReminders');
+  }
+
+  Future<List<Map<String, Object?>>> _buildReminderAlarms({
+    required PrayerAutomationSettings settings,
     required PrayerTimeModel prayerTimes,
-    required Map<String, bool> prayerEnabled,
-  }) {
+  }) async {
     final now = DateTime.now();
+    final silenceEngineCanRun =
+        settings.engineEnabled && await areAllPermissionsGranted();
     final candidates = <(int id, String key, String label, String time)>[
       (1001, 'fajr', 'Fajr', prayerTimes.fajr),
       (1002, 'dhuhr', 'Dhuhr', prayerTimes.dhuhr),
@@ -184,7 +203,7 @@ class PrayerAutomationService {
 
     return candidates
         .where((it) {
-          return prayerEnabled[it.$2] ?? false;
+          return settings.prayerEnabled[it.$2] ?? false;
         })
         .map((it) {
           final prayerTime = _parseTodayTime(now, it.$4);
@@ -194,7 +213,7 @@ class PrayerAutomationService {
             'hour': reminderTime.hour,
             'minute': reminderTime.minute,
             'label': '${it.$3} reminder (-3m)',
-            'enabled': true,
+            'silenceEngineEnabled': silenceEngineCanRun,
           };
         })
         .toList();

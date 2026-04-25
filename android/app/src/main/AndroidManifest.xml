@@ -38,6 +38,17 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <receiver
+            android:name=".prayer_reminders.PrayerReminderReceiver"
+            android:exported="false" />
+        <receiver
+            android:name=".prayer_reminders.PrayerReminderBootReceiver"
+            android:enabled="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
