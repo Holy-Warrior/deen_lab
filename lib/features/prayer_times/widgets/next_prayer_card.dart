@@ -14,38 +14,52 @@ class NextPrayerCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1ABC9C), Color(0xFF0F9D8A)],
+        gradient: LinearGradient(
+          colors: [
+            colorScheme.primary,
+            colorScheme.primary.withValues(alpha: 0.82),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: colorScheme.primary.withValues(alpha: 0.32),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Next Prayer", style: TextStyle(color: Colors.black87)),
+          Text(
+            "Next Prayer",
+            style: TextStyle(
+              color: colorScheme.onPrimary.withValues(alpha: 0.9),
+            ),
+          ),
           const SizedBox(height: 6),
           Text(
             "$nextPrayer - $time",
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
-              color: Colors.black,
+              color: colorScheme.onPrimary,
             ),
           ),
           const SizedBox(height: 6),
           Text(
             "Remaining: $remaining",
-            style: const TextStyle(color: Colors.black87),
+            style: TextStyle(
+              color: colorScheme.onPrimary.withValues(alpha: 0.9),
+            ),
           ),
         ],
       ),

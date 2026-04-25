@@ -17,6 +17,73 @@ class _SehriIftariViewState extends State<SehriIftariView> {
   late final TextEditingController _countryController;
   PrayerMethod? _pendingMethod;
 
+  Future<void> _handleLocationTap(SehriIftariController controller) async {
+    final result = await controller.detectLocation();
+    if (!mounted) {
+      return;
+    }
+
+    if (result == SehriLocationActionResult.serviceDisabled) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Enable Location Service'),
+            content: const Text(
+              'Please enable location service (GPS) to detect city and country automatically.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await controller.openLocationSettings();
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          );
+        },
+      );
+      if (!mounted) return;
+    }
+
+    if (result == SehriLocationActionResult.permissionDeniedForever) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Location Permission Needed'),
+            content: const Text(
+              'Location permission is permanently denied. Please enable it from app settings.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await controller.openAppSettings();
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Open App Settings'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+
+    _cityController.text = controller.city;
+    _countryController.text = controller.country;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -158,12 +225,7 @@ class _SehriIftariViewState extends State<SehriIftariView> {
                       onPressed: controller.isLocating
                           ? null
                           : () async {
-                              await controller.detectLocation();
-                              if (!mounted) {
-                                return;
-                              }
-                              _cityController.text = controller.city;
-                              _countryController.text = controller.country;
+                              await _handleLocationTap(controller);
                             },
                       icon: controller.isLocating
                           ? const SizedBox(
@@ -182,6 +244,15 @@ class _SehriIftariViewState extends State<SehriIftariView> {
             const SizedBox(height: 14),
             Text(
               controller.error!,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: colorScheme.error,
+              ),
+            ),
+          ],
+          if (controller.locationError != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              controller.locationError!,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: colorScheme.error,
               ),

@@ -8,6 +8,14 @@ import '../model/sehri_iftari_day.dart';
 import '../service/sehri_iftari_cache_service.dart';
 import '../service/sehri_iftari_service.dart';
 
+enum SehriLocationActionResult {
+  success,
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  failed,
+}
+
 class SehriIftariController extends ChangeNotifier {
   final SehriIftariService _service = SehriIftariService();
   final SehriIftariCacheService _cacheService = SehriIftariCacheService();
@@ -20,6 +28,7 @@ class SehriIftariController extends ChangeNotifier {
   bool isRefreshingMonth = false;
   bool isLocating = false;
   String? error;
+  String? locationError;
 
   String city = 'Karachi';
   String country = 'Pakistan';
@@ -88,24 +97,42 @@ class SehriIftariController extends ChangeNotifier {
     _safeNotifyListeners();
   }
 
-  Future<void> detectLocation() async {
+  Future<SehriLocationActionResult> detectLocation() async {
     try {
       isLocating = true;
+      locationError = null;
       _safeNotifyListeners();
 
       final details = await _locationService.getLocationDetails();
       if (_disposed) {
-        return;
+        return SehriLocationActionResult.failed;
       }
       city = details.city;
       country = details.country;
 
       await refresh();
+      return SehriLocationActionResult.success;
+    } on LocationFailure catch (e) {
+      if (_disposed) {
+        return SehriLocationActionResult.failed;
+      }
+      locationError = e.message;
+      switch (e.type) {
+        case LocationFailureType.serviceDisabled:
+          return SehriLocationActionResult.serviceDisabled;
+        case LocationFailureType.permissionDenied:
+          return SehriLocationActionResult.permissionDenied;
+        case LocationFailureType.permissionDeniedForever:
+          return SehriLocationActionResult.permissionDeniedForever;
+        case LocationFailureType.unknown:
+          return SehriLocationActionResult.failed;
+      }
     } catch (e) {
       if (_disposed) {
-        return;
+        return SehriLocationActionResult.failed;
       }
-      error = e.toString();
+      locationError = e.toString();
+      return SehriLocationActionResult.failed;
     } finally {
       if (!_disposed) {
         isLocating = false;
@@ -113,6 +140,11 @@ class SehriIftariController extends ChangeNotifier {
       }
     }
   }
+
+  Future<bool> openLocationSettings() =>
+      _locationService.openLocationSettings();
+
+  Future<bool> openAppSettings() => _locationService.openAppSettings();
 
   Future<void> _loadCurrentDay({bool forceRemote = false}) async {
     try {

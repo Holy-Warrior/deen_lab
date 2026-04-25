@@ -4,9 +4,10 @@ import 'package:provider/provider.dart';
 import '../controller/prayer_time_controller.dart';
 
 class PrayerHeader extends StatelessWidget {
-  const PrayerHeader({this.onOpenSettings, super.key});
+  const PrayerHeader({this.onOpenSettings, this.onTapLocation, super.key});
 
   final VoidCallback? onOpenSettings;
+  final VoidCallback? onTapLocation;
 
   static const cities = ["Peshawar", "Lahore", "Karachi", "Islamabad"];
 
@@ -49,11 +50,7 @@ class PrayerHeader extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
               : const Icon(Icons.my_location),
-          onPressed: controller.isLocating
-              ? null
-              : () {
-                  controller.detectLocation();
-                },
+          onPressed: controller.isLocating ? null : onTapLocation,
         ),
         IconButton(
           icon: const Icon(Icons.settings),
