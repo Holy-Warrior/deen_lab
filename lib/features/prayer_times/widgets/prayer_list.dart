@@ -19,11 +19,11 @@ class PrayerList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prayers = [
-      ("Fajr", fajr),
-      ("Dhuhr", dhuhr),
-      ("Asr", asr),
-      ("Maghrib", maghrib),
-      ("Isha", isha),
+      ("Fajr", _formatTo12Hour(fajr)),
+      ("Dhuhr", _formatTo12Hour(dhuhr)),
+      ("Asr", _formatTo12Hour(asr)),
+      ("Maghrib", _formatTo12Hour(maghrib)),
+      ("Isha", _formatTo12Hour(isha)),
     ];
 
     return Column(
@@ -37,5 +37,19 @@ class PrayerList extends StatelessWidget {
         );
       }).toList(),
     );
+  }
+
+  String _formatTo12Hour(String rawTime) {
+    final clean = rawTime.split(' ').first.trim();
+    final parts = clean.split(':');
+    if (parts.length < 2) return rawTime;
+
+    final hour24 = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour24 == null || minute == null) return rawTime;
+
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '$hour12:${minute.toString().padLeft(2, '0')} $period';
   }
 }

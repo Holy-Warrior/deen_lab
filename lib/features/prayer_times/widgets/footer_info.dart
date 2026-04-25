@@ -19,7 +19,7 @@ class FooterInfo extends StatelessWidget {
         const Divider(),
         const SizedBox(height: 8),
 
-        Text("Sunrise: $sunrise"),
+        Text("Sunrise: ${_formatTo12Hour(sunrise)}"),
         const SizedBox(height: 8),
 
         const Text("Calculation Method:"),
@@ -37,5 +37,19 @@ class FooterInfo extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _formatTo12Hour(String rawTime) {
+    final clean = rawTime.split(' ').first.trim();
+    final parts = clean.split(':');
+    if (parts.length < 2) return rawTime;
+
+    final hour24 = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour24 == null || minute == null) return rawTime;
+
+    final hour12 = hour24 == 0 ? 12 : (hour24 > 12 ? hour24 - 12 : hour24);
+    final period = hour24 >= 12 ? 'PM' : 'AM';
+    return '$hour12:${minute.toString().padLeft(2, '0')} $period';
   }
 }

@@ -23,6 +23,71 @@ class PrayerTimeTab extends StatelessWidget {
 class _PrayerTimeView extends StatelessWidget {
   const _PrayerTimeView();
 
+  Future<void> _handleLocationTap(
+    BuildContext context,
+    PrayerTimeController controller,
+  ) async {
+    final result = await controller.detectLocation();
+    if (!context.mounted) return;
+
+    if (result == LocationActionResult.serviceDisabled) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Enable Location Service'),
+            content: const Text(
+              'Please enable location service (GPS) to detect your city automatically.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await controller.openLocationSettings();
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Open Settings'),
+              ),
+            ],
+          );
+        },
+      );
+      if (!context.mounted) return;
+    }
+
+    if (result == LocationActionResult.permissionDeniedForever) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: const Text('Location Permission Needed'),
+            content: const Text(
+              'Location permission is permanently denied. Please enable it from app settings.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await controller.openAppSettings();
+                  if (!dialogContext.mounted) return;
+                  Navigator.of(dialogContext).pop();
+                },
+                child: const Text('Open App Settings'),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controller = context.watch<PrayerTimeController>();
@@ -31,8 +96,14 @@ class _PrayerTimeView extends StatelessWidget {
       return const Center(child: CircularProgressIndicator());
     }
 
-    if (controller.error != null) {
+    if (controller.data == null && controller.error != null) {
       return Center(child: Text(controller.error!));
+    }
+
+    if (controller.data == null) {
+      return const Center(
+        child: Text('Unable to load prayer times right now.'),
+      );
     }
 
     final data = controller.data!;
@@ -41,6 +112,7 @@ class _PrayerTimeView extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         PrayerHeader(
+          onTapLocation: () => _handleLocationTap(context, controller),
           onOpenSettings: () async {
             await Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -53,6 +125,20 @@ class _PrayerTimeView extends StatelessWidget {
           },
         ),
         const SizedBox(height: 16),
+        if (controller.locationError != null) ...[
+          Text(
+            controller.locationError!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          const SizedBox(height: 12),
+        ],
+        if (controller.error != null) ...[
+          Text(
+            controller.error!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error),
+          ),
+          const SizedBox(height: 12),
+        ],
 
         NextPrayerCard(
           nextPrayer: controller.nextPrayerName,

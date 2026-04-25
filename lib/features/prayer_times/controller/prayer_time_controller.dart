@@ -8,6 +8,14 @@ import '../service/location_service.dart';
 import '../service/cache_service.dart';
 import '../service/prayer_automation_service.dart';
 
+enum LocationActionResult {
+  success,
+  serviceDisabled,
+  permissionDenied,
+  permissionDeniedForever,
+  failed,
+}
+
 class PrayerTimeController extends ChangeNotifier {
   final PrayerTimeService _service = PrayerTimeService();
   final LocationService _locationService = LocationService();
@@ -18,6 +26,7 @@ class PrayerTimeController extends ChangeNotifier {
   bool isLoading = true;
   bool isLocating = false;
   String? error;
+  String? locationError;
 
   String city = "Peshawar";
 
@@ -30,20 +39,32 @@ class PrayerTimeController extends ChangeNotifier {
   Timer? _timer;
   bool _disposed = false;
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> load() async {
     isLoading = true;
-    notifyListeners();
+    _safeNotifyListeners();
 
     // Load saved city first
     final savedCity = await _cacheService.loadCity();
+    if (_disposed) {
+      return;
+    }
     if (savedCity != null) {
       city = savedCity;
     }
 
     await _loadPrayerTimes();
+    if (_disposed) {
+      return;
+    }
 
     isLoading = false;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   Future<void> _loadPrayerTimes() async {
@@ -59,6 +80,9 @@ class PrayerTimeController extends ChangeNotifier {
       error = null;
     } catch (e) {
       final cached = await _cacheService.loadPrayer();
+      if (_disposed) {
+        return;
+      }
 
       if (cached != null) {
         data = cached;
@@ -83,23 +107,46 @@ class PrayerTimeController extends ChangeNotifier {
     }
   }
 
-  Future<void> detectLocation() async {
+  Future<LocationActionResult> detectLocation() async {
     try {
       isLocating = true;
-      notifyListeners();
+      locationError = null;
+      _safeNotifyListeners();
 
       final detectedCity = await _locationService.getCity();
+      if (_disposed) {
+        return LocationActionResult.failed;
+      }
 
       city = detectedCity;
 
       await _loadPrayerTimes();
+      return LocationActionResult.success;
+    } on LocationFailure catch (e) {
+      locationError = e.message;
+      switch (e.type) {
+        case LocationFailureType.serviceDisabled:
+          return LocationActionResult.serviceDisabled;
+        case LocationFailureType.permissionDenied:
+          return LocationActionResult.permissionDenied;
+        case LocationFailureType.permissionDeniedForever:
+          return LocationActionResult.permissionDeniedForever;
+        case LocationFailureType.unknown:
+          return LocationActionResult.failed;
+      }
     } catch (e) {
-      error = e.toString();
+      locationError = e.toString();
+      return LocationActionResult.failed;
+    } finally {
+      isLocating = false;
+      _safeNotifyListeners();
     }
-
-    isLocating = false;
-    notifyListeners();
   }
+
+  Future<bool> openLocationSettings() =>
+      _locationService.openLocationSettings();
+
+  Future<bool> openAppSettings() => _locationService.openAppSettings();
 
   void changeCity(String newCity) {
     city = newCity;
@@ -118,7 +165,7 @@ class PrayerTimeController extends ChangeNotifier {
       if (_disposed) return;
 
       _calculateNextPrayer();
-      notifyListeners();
+      _safeNotifyListeners();
     });
   }
 
@@ -167,7 +214,7 @@ class PrayerTimeController extends ChangeNotifier {
   }
 
   String _formatTime(DateTime dt) {
-    final hour = dt.hour > 12 ? dt.hour - 12 : dt.hour;
+    final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
     final period = dt.hour >= 12 ? "PM" : "AM";
     final minute = dt.minute.toString().padLeft(2, '0');
 
