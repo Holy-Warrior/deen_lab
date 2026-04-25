@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import '../controller/prayer_time_controller.dart';
 
 class PrayerHeader extends StatelessWidget {
-  const PrayerHeader({super.key});
+  const PrayerHeader({this.onOpenSettings, super.key});
+
+  final VoidCallback? onOpenSettings;
 
   static const cities = ["Peshawar", "Lahore", "Karachi", "Islamabad"];
 
@@ -18,7 +20,10 @@ class PrayerHeader extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Prayer Times", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const Text(
+                "Prayer Times",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 6),
 
               DropdownButton<String>(
@@ -36,16 +41,24 @@ class PrayerHeader extends StatelessWidget {
           ),
         ),
 
-        // 📍 GPS BUTTON (USER INITIATED)
         IconButton(
           icon: controller.isLocating
-              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
               : const Icon(Icons.my_location),
           onPressed: controller.isLocating
               ? null
               : () {
                   controller.detectLocation();
                 },
+        ),
+        IconButton(
+          icon: const Icon(Icons.settings),
+          onPressed: onOpenSettings,
+          tooltip: 'Prayer settings',
         ),
       ],
     );

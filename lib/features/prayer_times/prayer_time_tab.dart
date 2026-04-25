@@ -6,13 +6,17 @@ import 'widgets/prayer_header.dart';
 import 'widgets/next_prayer_card.dart';
 import 'widgets/prayer_list.dart';
 import 'widgets/footer_info.dart';
+import 'ui/prayer_time_settings_page.dart';
 
 class PrayerTimeTab extends StatelessWidget {
   const PrayerTimeTab({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => PrayerTimeController()..load(), child: const _PrayerTimeView());
+    return ChangeNotifierProvider(
+      create: (_) => PrayerTimeController()..load(),
+      child: const _PrayerTimeView(),
+    );
   }
 }
 
@@ -36,7 +40,18 @@ class _PrayerTimeView extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        const PrayerHeader(),
+        PrayerHeader(
+          onOpenSettings: () async {
+            await Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    PrayerTimeSettingsPage(prayerTimes: controller.data),
+              ),
+            );
+            if (!context.mounted) return;
+            await context.read<PrayerTimeController>().syncPrayerAutomation();
+          },
+        ),
         const SizedBox(height: 16),
 
         NextPrayerCard(
@@ -47,7 +62,13 @@ class _PrayerTimeView extends StatelessWidget {
 
         const SizedBox(height: 20),
 
-        PrayerList(fajr: data.fajr, dhuhr: data.dhuhr, asr: data.asr, maghrib: data.maghrib, isha: data.isha),
+        PrayerList(
+          fajr: data.fajr,
+          dhuhr: data.dhuhr,
+          asr: data.asr,
+          maghrib: data.maghrib,
+          isha: data.isha,
+        ),
 
         const SizedBox(height: 20),
 

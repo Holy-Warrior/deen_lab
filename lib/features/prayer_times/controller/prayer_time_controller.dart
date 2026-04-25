@@ -6,11 +6,13 @@ import '../model/prayer_method.dart';
 import '../service/prayer_time_service.dart';
 import '../service/location_service.dart';
 import '../service/cache_service.dart';
+import '../service/prayer_automation_service.dart';
 
 class PrayerTimeController extends ChangeNotifier {
   final PrayerTimeService _service = PrayerTimeService();
   final LocationService _locationService = LocationService();
   final CacheService _cacheService = CacheService();
+  final PrayerAutomationService _automationService = PrayerAutomationService();
 
   PrayerTimeModel? data;
   bool isLoading = true;
@@ -46,7 +48,10 @@ class PrayerTimeController extends ChangeNotifier {
 
   Future<void> _loadPrayerTimes() async {
     try {
-      data = await _service.fetchPrayerTimes(city: city, method: method.apiValue);
+      data = await _service.fetchPrayerTimes(
+        city: city,
+        method: method.apiValue,
+      );
 
       await _cacheService.savePrayer(data!);
       await _cacheService.saveCity(city);
@@ -66,6 +71,15 @@ class PrayerTimeController extends ChangeNotifier {
     if (data != null) {
       _calculateNextPrayer();
       _startTimer();
+      await syncPrayerAutomation();
+    }
+  }
+
+  Future<void> syncPrayerAutomation() async {
+    try {
+      await _automationService.syncAlarmsOnly(prayerTimes: data);
+    } catch (_) {
+      // Keep prayer-time UX stable even if native automation sync fails.
     }
   }
 
@@ -114,7 +128,13 @@ class PrayerTimeController extends ChangeNotifier {
 
     final now = DateTime.now();
 
-    return DateTime(now.year, now.month, now.day, int.parse(parts[0]), int.parse(parts[1]));
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+    );
   }
 
   void _calculateNextPrayer() {
