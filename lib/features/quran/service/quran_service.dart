@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -8,23 +9,31 @@ class QuranService {
   static const _base = "https://api.alquran.cloud/v1";
 
   Future<List<Surah>> fetchSurahs() async {
-    final res = await http.get(Uri.parse("$_base/surah")).timeout(const Duration(seconds: 10));
+    try {
+      final res = await http
+          .get(Uri.parse("$_base/surah"))
+          .timeout(const Duration(seconds: 10));
 
-    if (res.statusCode != 200) {
-      throw Exception("Failed to load surahs");
+      if (res.statusCode != 200) {
+        throw Exception("Failed to load surahs");
+      }
+
+      final decoded = jsonDecode(res.body);
+
+      if (decoded == null || decoded['data'] == null) {
+        throw Exception("Invalid API response");
+      }
+
+      return (decoded['data'] as List).map((e) => Surah.fromJson(e)).toList();
+    } on TimeoutException {
+      throw Exception("Quran service timed out. Please try again.");
     }
-
-    final decoded = jsonDecode(res.body);
-
-    if (decoded == null || decoded['data'] == null) {
-      throw Exception("Invalid API response");
-    }
-
-    return (decoded['data'] as List).map((e) => Surah.fromJson(e)).toList();
   }
 
   Future<List<Ayah>> fetchSurahDetail(int surahNumber) async {
-    final arabicRes = await http.get(Uri.parse("$_base/surah/$surahNumber")).timeout(const Duration(seconds: 10));
+    final arabicRes = await http
+        .get(Uri.parse("$_base/surah/$surahNumber"))
+        .timeout(const Duration(seconds: 10));
 
     final transRes = await http
         .get(Uri.parse("$_base/surah/$surahNumber/en.asad"))

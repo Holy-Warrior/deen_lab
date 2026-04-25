@@ -9,6 +9,9 @@ class QuranTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(create: (_) => QuranController()..loadSurahs(), child: const SurahListView());
+    return ChangeNotifierProvider(
+      create: (_) => QuranController()..loadSurahs(),
+      child: const SurahListView(),
+    );
   }
 }

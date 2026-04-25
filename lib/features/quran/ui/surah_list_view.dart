@@ -24,13 +24,17 @@ class _SurahListViewState extends State<SurahListView> {
     }
 
     if (controller.surahs.isEmpty) {
-      return const Center(child: Text("Failed to load Quran"));
+      return Center(
+        child: Text(controller.loadingError ?? "Failed to load Quran"),
+      );
     }
 
     final q = query.toLowerCase();
 
     final filtered = controller.surahs.where((s) {
-      return s.englishName.toLowerCase().contains(q) || s.name.contains(q) || s.number.toString().contains(q);
+      return s.englishName.toLowerCase().contains(q) ||
+          s.name.contains(q) ||
+          s.number.toString().contains(q);
     }).toList();
 
     return Column(
@@ -41,7 +45,9 @@ class _SurahListViewState extends State<SurahListView> {
             decoration: InputDecoration(
               hintText: "Search Surah (name or number)",
               prefixIcon: const Icon(Icons.search),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
             onChanged: (v) => setState(() => query = v),
           ),
@@ -93,7 +99,10 @@ class _SurahListViewState extends State<SurahListView> {
           TextSpan(text: text.substring(0, start)),
           TextSpan(
             text: text.substring(start, end),
-            style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
+            style: const TextStyle(
+              color: Colors.green,
+              fontWeight: FontWeight.bold,
+            ),
           ),
           TextSpan(text: text.substring(end)),
         ],

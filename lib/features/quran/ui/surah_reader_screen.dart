@@ -49,7 +49,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     showModalBottomSheet(
       context: context,
       builder: (_) {
-        return ChangeNotifierProvider.value(value: controller, child: const _ReaderSettingsSheet());
+        return ChangeNotifierProvider.value(
+          value: controller,
+          child: const _ReaderSettingsSheet(),
+        );
       },
     );
   }
@@ -79,7 +82,12 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.surah.englishName),
-        actions: [IconButton(icon: const Icon(Icons.tune), onPressed: () => _openSettings(controller))],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.tune),
+            onPressed: () => _openSettings(controller),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
@@ -101,7 +109,9 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
 
           return Stack(
             children: [
-              settings.mode == QuranReadingMode.mushaf ? _buildMushafView(settings) : _buildStudyView(settings),
+              settings.mode == QuranReadingMode.mushaf
+                  ? _buildMushafView(settings)
+                  : _buildStudyView(settings),
 
               if (isDragging) _buildCenterIndicator(),
             ],
@@ -179,12 +189,18 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
                 height: isDragging ? 14 : 6,
                 width: double.infinity,
                 margin: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(color: Colors.grey.shade600, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade600,
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: FractionallySizedBox(
                   alignment: Alignment.centerLeft,
                   widthFactor: progress,
                   child: Container(
-                    decoration: BoxDecoration(color: Colors.greenAccent, borderRadius: BorderRadius.circular(12)),
+                    decoration: BoxDecoration(
+                      color: Colors.greenAccent,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
               ),
@@ -201,10 +217,17 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     return Center(
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(16),
+        ),
         child: Text(
           "Ayah $ayahNumber",
-          style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
     );
@@ -225,11 +248,23 @@ class _ReaderSettingsSheet extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text("Reader Settings", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Slider(min: 18, max: 32, value: s.fontSize, onChanged: c.updateFontSize),
+              const Text(
+                "Reader Settings",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Slider(
+                min: 18,
+                max: 32,
+                value: s.fontSize,
+                onChanged: c.updateFontSize,
+              ),
               ElevatedButton(
                 onPressed: c.toggleMode,
-                child: Text(s.mode == QuranReadingMode.mushaf ? "Study Mode" : "Mushaf Mode"),
+                child: Text(
+                  s.mode == QuranReadingMode.mushaf
+                      ? "Study Mode"
+                      : "Mushaf Mode",
+                ),
               ),
             ],
           ),

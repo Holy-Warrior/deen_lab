@@ -18,10 +18,7 @@ class DeenLabTab {
 }
 
 enum TabType {
-  list,
   text,
-  button,
-  box,
   addNew,
   prayer,
   sehriIftari,
@@ -104,9 +101,6 @@ class DeenLabTabController extends ChangeNotifier {
           generatedFeature: feature,
         ),
       ),
-      DeenLabTab(id: 'list', title: 'List', type: TabType.list),
-      DeenLabTab(id: 'action', title: 'Action', type: TabType.button),
-      DeenLabTab(id: 'box', title: 'Box', type: TabType.box),
       DeenLabTab(id: 'add', title: '+', type: TabType.addNew),
     ];
   }

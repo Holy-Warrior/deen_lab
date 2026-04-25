@@ -12,20 +12,35 @@ class QuranController extends ChangeNotifier {
   final Map<int, List<Ayah>> _cache = {};
 
   bool isSurahListLoading = false;
+  String? loadingError;
+  bool _disposed = false;
 
   final QuranReaderSettings readerSettings = QuranReaderSettings();
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> loadSurahs() async {
-    if (surahs.isNotEmpty) return;
+    if (surahs.isNotEmpty || isSurahListLoading) return;
 
     try {
       isSurahListLoading = true;
-      notifyListeners();
+      loadingError = null;
+      _safeNotifyListeners();
 
       surahs = await _service.fetchSurahs();
+    } catch (e) {
+      if (_disposed) {
+        return;
+      }
+      loadingError = e.toString();
+      surahs = [];
     } finally {
       isSurahListLoading = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -45,11 +60,17 @@ class QuranController extends ChangeNotifier {
 
   void updateFontSize(double size) {
     readerSettings.fontSize = size;
-    notifyListeners();
+    _safeNotifyListeners();
   }
 
   void toggleMode() {
     readerSettings.toggleMode();
-    notifyListeners();
+    _safeNotifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
   }
 }
