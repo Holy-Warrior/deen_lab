@@ -30,31 +30,73 @@ class _HomeDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
+    final tabController = context.watch<DeenLabTabController>();
 
+    if (tabController.isRestoringHomeWidgets) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    final visibleWidgets = tabController.visibleHomeWidgets;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
       children: [
-        Text('Home', style: theme.textTheme.headlineSmall),
-        const SizedBox(height: 6),
-        Text(
-          'Useful snapshots from the core features.',
-          style: theme.textTheme.bodyMedium,
-        ),
-        const SizedBox(height: 18),
-        _PrayerSummaryCard(onOpen: () => _openTab(context, 'prayer')),
-        const SizedBox(height: 12),
-        _SehriIftariSummaryCard(
-          onOpen: () => _openTab(context, 'sehri-iftari'),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton.icon(
+              onPressed: () => _openEditor(context),
+              icon: const Icon(Icons.edit_rounded),
+              label: const Text('Edit'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
-        _QiblaSummaryCard(onOpen: () => _openTab(context, 'qibla')),
-        const SizedBox(height: 12),
-        _QuranSummaryCard(onOpen: () => _openTab(context, 'quran')),
-        const SizedBox(height: 12),
-        _HadithSummaryCard(onOpen: () => _openTab(context, 'hadees')),
+        if (visibleWidgets.isEmpty)
+          _EmptyHomeState(onEdit: () => _openEditor(context))
+        else
+          ..._buildVisibleCards(context, visibleWidgets),
       ],
     );
+  }
+
+  List<Widget> _buildVisibleCards(
+    BuildContext context,
+    List<HomeWidgetType> visibleWidgets,
+  ) {
+    final items = <Widget>[];
+    for (final widget in visibleWidgets) {
+      items.add(_buildCardForWidget(context, widget));
+      items.add(const SizedBox(height: 12));
+    }
+    if (items.isNotEmpty) {
+      items.removeLast();
+    }
+    return items;
+  }
+
+  Widget _buildCardForWidget(BuildContext context, HomeWidgetType widget) {
+    switch (widget) {
+      case HomeWidgetType.prayerTimes:
+        return _PrayerSummaryCard(
+          onOpen: () => _openTab(context, 'prayer'),
+        );
+      case HomeWidgetType.sehriIftari:
+        return _SehriIftariSummaryCard(
+          onOpen: () => _openTab(context, 'sehri-iftari'),
+        );
+      case HomeWidgetType.qibla:
+        return _QiblaSummaryCard(
+          onOpen: () => _openTab(context, 'qibla'),
+        );
+      case HomeWidgetType.quran:
+        return _QuranSummaryCard(
+          onOpen: () => _openTab(context, 'quran'),
+        );
+      case HomeWidgetType.hadees:
+        return _HadithSummaryCard(
+          onOpen: () => _openTab(context, 'hadees'),
+        );
+    }
   }
 
   void _openTab(BuildContext context, String tabId) {
@@ -63,6 +105,61 @@ class _HomeDashboard extends StatelessWidget {
     if (index != -1) {
       tabController.setIndex(index);
     }
+  }
+
+  void _openEditor(BuildContext context) {
+    final tabController = context.read<DeenLabTabController>();
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider.value(
+          value: tabController,
+          child: const _HomeEditorScreen(),
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyHomeState extends StatelessWidget {
+  const _EmptyHomeState({required this.onEdit});
+
+  final VoidCallback onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Column(
+        children: [
+          Icon(
+            Icons.widgets_outlined,
+            size: 34,
+            color: colorScheme.primary,
+          ),
+          const SizedBox(height: 12),
+          Text('No widgets on home', style: theme.textTheme.titleLarge),
+          const SizedBox(height: 8),
+          Text(
+            'Your home dashboard is empty. Open the editor to add the widgets you want back.',
+            textAlign: TextAlign.center,
+            style: theme.textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: onEdit,
+            icon: const Icon(Icons.edit_rounded),
+            label: const Text('Edit Home'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -78,8 +175,8 @@ class _PrayerSummaryCard extends StatelessWidget {
 
     return _HomeCard(
       title: 'Prayer Times',
-      actionLabel: 'Open',
-      onOpen: onOpen,
+      onTap: onOpen,
+      icon: HomeWidgetType.prayerTimes.icon,
       child: controller.isLoading
           ? const _MiniLoading()
           : controller.data == null
@@ -116,8 +213,8 @@ class _SehriIftariSummaryCard extends StatelessWidget {
 
     return _HomeCard(
       title: 'Sehri & Iftari',
-      actionLabel: 'Open',
-      onOpen: onOpen,
+      onTap: onOpen,
+      icon: HomeWidgetType.sehriIftari.icon,
       child: controller.isLoading
           ? const _MiniLoading()
           : controller.today == null
@@ -159,8 +256,8 @@ class _QiblaSummaryCard extends StatelessWidget {
 
     return _HomeCard(
       title: 'Qibla',
-      actionLabel: 'Open',
-      onOpen: onOpen,
+      onTap: onOpen,
+      icon: HomeWidgetType.qibla.icon,
       child: controller.isLoading
           ? const _MiniLoading()
           : controller.direction == null
@@ -204,8 +301,8 @@ class _QuranSummaryCard extends StatelessWidget {
 
     return _HomeCard(
       title: 'Quran',
-      actionLabel: 'Open',
-      onOpen: onOpen,
+      onTap: onOpen,
+      icon: HomeWidgetType.quran.icon,
       child: controller.isSurahListLoading
           ? const _MiniLoading()
           : controller.surahs.isEmpty
@@ -251,8 +348,8 @@ class _HadithSummaryCard extends StatelessWidget {
 
     return _HomeCard(
       title: 'Hadees',
-      actionLabel: 'Open',
-      onOpen: onOpen,
+      onTap: onOpen,
+      icon: HomeWidgetType.hadees.icon,
       child: controller.isLoadingCollections
           ? const _MiniLoading()
           : controller.collections.isEmpty
@@ -285,14 +382,14 @@ class _HadithSummaryCard extends StatelessWidget {
 class _HomeCard extends StatelessWidget {
   const _HomeCard({
     required this.title,
-    required this.actionLabel,
-    required this.onOpen,
+    required this.onTap,
+    required this.icon,
     required this.child,
   });
 
   final String title;
-  final String actionLabel;
-  final VoidCallback onOpen;
+  final VoidCallback onTap;
+  final IconData icon;
   final Widget child;
 
   @override
@@ -303,23 +400,136 @@ class _HomeCard extends StatelessWidget {
     return Card(
       elevation: 0,
       color: colorScheme.surfaceContainerLow,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    height: 42,
+                    width: 42,
+                    decoration: BoxDecoration(
+                      color: colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: colorScheme.onPrimaryContainer),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(title, style: theme.textTheme.titleMedium),
+                  ),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: colorScheme.onSurfaceVariant,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeEditorScreen extends StatelessWidget {
+  const _HomeEditorScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tabController = context.watch<DeenLabTabController>();
+    final visibleWidgets = tabController.visibleHomeWidgets;
+    final availableWidgets = tabController.availableHomeWidgets;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Edit Home')),
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        children: [
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(title, style: theme.textTheme.titleMedium),
+                Text('Visible widgets', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Text(
+                  'Choose what appears on your home tab. Keep at least one widget visible.',
+                  style: theme.textTheme.bodyMedium,
                 ),
-                TextButton(onPressed: onOpen, child: Text(actionLabel)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: visibleWidgets
+                      .map(
+                        (widget) => InputChip(
+                          avatar: Icon(widget.icon, size: 18),
+                          label: Text(widget.title),
+                          onDeleted: visibleWidgets.length > 1
+                              ? () => tabController.hideHomeWidget(widget)
+                              : null,
+                        ),
+                      )
+                      .toList(),
+                ),
               ],
             ),
-            const SizedBox(height: 8),
-            child,
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerLow,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: theme.colorScheme.outlineVariant),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Add widgets', style: theme.textTheme.titleLarge),
+                const SizedBox(height: 8),
+                Text(
+                  'Bring back any cards you want on the dashboard.',
+                  style: theme.textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 16),
+                if (availableWidgets.isEmpty)
+                  Text(
+                    'All available widgets are already on your home tab.',
+                    style: theme.textTheme.bodyMedium,
+                  )
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: availableWidgets
+                        .map(
+                          (widget) => ActionChip(
+                            avatar: Icon(widget.icon, size: 18),
+                            label: Text(widget.title),
+                            onPressed: () => tabController.showHomeWidget(widget),
+                          ),
+                        )
+                        .toList(),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
