@@ -81,6 +81,17 @@ class FeatureStudioController extends ChangeNotifier {
           htmlFilePath: htmlPath,
           createdAt: DateTime.now(),
           aiMessage: result.message,
+          activeVersionId: '${featureId}_v1',
+          versions: [
+            GeneratedFeatureVersion(
+              id: '${featureId}_v1',
+              prompt: trimmed,
+              aiMessage: result.message,
+              htmlFilePath: htmlPath,
+              createdAt: DateTime.now(),
+              versionNumber: 1,
+            ),
+          ],
         );
 
         await _tabController.addGeneratedFeature(feature);

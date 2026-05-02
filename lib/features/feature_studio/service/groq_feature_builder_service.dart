@@ -7,6 +7,37 @@ import '../model/feature_build_result.dart';
 
 class GroqFeatureBuilderService {
   Future<FeatureBuildResult> buildFeature(String prompt) async {
+    return _sendStructuredRequest(
+      systemPrompt: _createSystemPrompt,
+      userPrompt: prompt.trim(),
+    );
+  }
+
+  Future<FeatureBuildResult> updateFeature({
+    required String featureTitle,
+    required String originalPrompt,
+    required String currentPrompt,
+    required String currentAiMessage,
+    required String currentHtml,
+    required String userRequest,
+  }) async {
+    return _sendStructuredRequest(
+      systemPrompt: _updateSystemPrompt,
+      userPrompt: jsonEncode({
+        'featureTitle': featureTitle,
+        'originalPrompt': originalPrompt,
+        'currentPrompt': currentPrompt,
+        'currentAiMessage': currentAiMessage,
+        'currentHtml': currentHtml,
+        'userRequest': userRequest.trim(),
+      }),
+    );
+  }
+
+  Future<FeatureBuildResult> _sendStructuredRequest({
+    required String systemPrompt,
+    required String userPrompt,
+  }) async {
     if (!GroqConfig.isConfigured) {
       return const FeatureBuildResult.decline(
         title: 'Groq API key missing',
@@ -26,8 +57,8 @@ class GroqFeatureBuilderService {
         'temperature': 0.3,
         'max_completion_tokens': 2500,
         'messages': [
-          {'role': 'system', 'content': _systemPrompt},
-          {'role': 'user', 'content': prompt.trim()},
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
         ],
       }),
     );
@@ -97,7 +128,7 @@ class GroqFeatureBuilderService {
     }
   }
 
-  static const String _systemPrompt = '''
+  static const String _createSystemPrompt = '''
 You are an AI feature gate and HTML feature generator for the DeenLab mobile app.
 
 Your job:
@@ -126,6 +157,53 @@ When you generate:
 - make it visually polished and intentional
 - support both light and dark appearance using CSS and sensible colors
 - do not fetch external resources
+- do not include markdown fences in the html field
+
+Return valid JSON only with this schema:
+{
+  "decision": "generate" or "decline",
+  "title": "short title",
+  "message": "brief explanation for the user",
+  "html": "full html string or empty string when declining"
+}
+''';
+
+  static const String _updateSystemPrompt = '''
+You are an AI feature upgrader for the DeenLab mobile app.
+
+You receive:
+- the feature title
+- the original creation prompt
+- the prompt behind the currently active version
+- the AI message for the currently active version
+- the full current HTML
+- the user's new update request
+
+Your job:
+1. Keep the feature aligned with Deen or Islamic utility.
+2. Improve the existing interface and behavior instead of rebuilding it carelessly.
+3. Accept requests to improve UI, refine UX, or add a small useful feature.
+4. Reject requests that are unrelated to the existing feature, non-Deen, or too large for one offline-friendly HTML page.
+5. Return a polished, self-contained updated HTML document when accepted.
+
+You must reject requests involving:
+- backend servers
+- authentication
+- payments
+- large databases
+- multi-page web apps
+- external APIs
+- remote assets, CDNs, or external scripts
+- native phone integrations beyond simple HTML/JS
+- content unrelated to Deen
+- vague requests that do not specify a meaningful update
+
+When you generate:
+- preserve the spirit of the existing feature
+- improve clarity, spacing, and mobile usability
+- keep it offline friendly
+- include inline CSS and inline JavaScript only
+- support both light and dark appearance
 - do not include markdown fences in the html field
 
 Return valid JSON only with this schema:
