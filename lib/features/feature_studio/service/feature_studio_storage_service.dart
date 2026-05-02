@@ -62,6 +62,15 @@ class FeatureStudioStorageService {
     }
   }
 
+  Future<String> readHtmlFile(String filePath) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      throw Exception('Generated HTML file is missing.');
+    }
+
+    return file.readAsString();
+  }
+
   Future<Directory> _generatedFeaturesDirectory() async {
     final baseDir = await getApplicationSupportDirectory();
     final dir = Directory(path.join(baseDir.path, 'generated_features'));

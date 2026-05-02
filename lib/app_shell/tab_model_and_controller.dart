@@ -138,7 +138,9 @@ class DeenLabTabController extends ChangeNotifier {
     }
 
     final feature = _generatedFeatures.removeAt(index);
-    await _storageService.deleteHtmlFile(feature.htmlFilePath);
+    for (final version in feature.effectiveVersions) {
+      await _storageService.deleteHtmlFile(version.htmlFilePath);
+    }
     await _storageService.saveGeneratedFeatures(_generatedFeatures);
 
     final allTabs = _buildTabs();
@@ -146,6 +148,17 @@ class DeenLabTabController extends ChangeNotifier {
       _targetIndex = allTabs.isEmpty ? 0 : allTabs.length - 1;
     }
 
+    notifyListeners();
+  }
+
+  Future<void> updateGeneratedFeature(GeneratedFeature feature) async {
+    final index = _generatedFeatures.indexWhere((item) => item.id == feature.id);
+    if (index == -1) {
+      return;
+    }
+
+    _generatedFeatures[index] = feature;
+    await _storageService.saveGeneratedFeatures(_generatedFeatures);
     notifyListeners();
   }
 
