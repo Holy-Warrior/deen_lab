@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../features/feature_studio/model/generated_feature.dart';
 import '../features/feature_studio/service/feature_studio_storage_service.dart';
@@ -28,25 +29,96 @@ enum TabType {
   generatedFeature,
 }
 
+enum HomeWidgetType {
+  prayerTimes,
+  sehriIftari,
+  qibla,
+  quran,
+  hadees,
+}
+
+extension HomeWidgetTypeX on HomeWidgetType {
+  String get id {
+    switch (this) {
+      case HomeWidgetType.prayerTimes:
+        return 'prayer-times';
+      case HomeWidgetType.sehriIftari:
+        return 'sehri-iftari';
+      case HomeWidgetType.qibla:
+        return 'qibla';
+      case HomeWidgetType.quran:
+        return 'quran';
+      case HomeWidgetType.hadees:
+        return 'hadees';
+    }
+  }
+
+  String get title {
+    switch (this) {
+      case HomeWidgetType.prayerTimes:
+        return 'Prayer Times';
+      case HomeWidgetType.sehriIftari:
+        return 'Sehri & Iftari';
+      case HomeWidgetType.qibla:
+        return 'Qibla';
+      case HomeWidgetType.quran:
+        return 'Quran';
+      case HomeWidgetType.hadees:
+        return 'Hadees';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case HomeWidgetType.prayerTimes:
+        return Icons.access_time_filled_rounded;
+      case HomeWidgetType.sehriIftari:
+        return Icons.nights_stay_rounded;
+      case HomeWidgetType.qibla:
+        return Icons.explore_rounded;
+      case HomeWidgetType.quran:
+        return Icons.menu_book_rounded;
+      case HomeWidgetType.hadees:
+        return Icons.auto_stories_rounded;
+    }
+  }
+}
+
 class DeenLabTabController extends ChangeNotifier {
   DeenLabTabController() {
     _loadGeneratedFeatures();
+    _loadHomeWidgetPreferences();
   }
 
   final FeatureStudioStorageService _storageService =
       FeatureStudioStorageService();
+  static const _homeWidgetsKey = 'home_visible_widgets';
 
   final List<GeneratedFeature> _generatedFeatures = [];
+  final List<HomeWidgetType> _visibleHomeWidgets = List.of(HomeWidgetType.values);
   int _targetIndex = 0;
   bool isRestoringGeneratedTabs = true;
+  bool isRestoringHomeWidgets = true;
 
   List<DeenLabTab> get tabs => List.unmodifiable(_buildTabs());
   int get targetIndex => _targetIndex;
   List<GeneratedFeature> get generatedFeatures =>
       List.unmodifiable(_generatedFeatures);
+  List<HomeWidgetType> get visibleHomeWidgets =>
+      List.unmodifiable(_visibleHomeWidgets);
+  List<HomeWidgetType> get availableHomeWidgets => List.unmodifiable(
+    HomeWidgetType.values
+        .where((widget) => !_visibleHomeWidgets.contains(widget))
+        .toList(),
+  );
+  bool get isRestoring => isRestoringGeneratedTabs || isRestoringHomeWidgets;
 
   void setIndex(int index) {
+    if (_targetIndex == index) {
+      return;
+    }
     _targetIndex = index;
+    notifyListeners();
   }
 
   Future<void> addGeneratedFeature(GeneratedFeature feature) async {
@@ -79,6 +151,30 @@ class DeenLabTabController extends ChangeNotifier {
 
   bool hasGeneratedFeature(String featureId) {
     return _generatedFeatures.any((feature) => feature.id == featureId);
+  }
+
+  bool isHomeWidgetVisible(HomeWidgetType widget) {
+    return _visibleHomeWidgets.contains(widget);
+  }
+
+  Future<void> showHomeWidget(HomeWidgetType widget) async {
+    if (_visibleHomeWidgets.contains(widget)) {
+      return;
+    }
+
+    _visibleHomeWidgets.add(widget);
+    await _saveHomeWidgetPreferences();
+    notifyListeners();
+  }
+
+  Future<void> hideHomeWidget(HomeWidgetType widget) async {
+    if (!_visibleHomeWidgets.contains(widget) || _visibleHomeWidgets.length == 1) {
+      return;
+    }
+
+    _visibleHomeWidgets.remove(widget);
+    await _saveHomeWidgetPreferences();
+    notifyListeners();
   }
 
   List<DeenLabTab> _buildTabs() {
@@ -115,5 +211,48 @@ class DeenLabTabController extends ChangeNotifier {
       isRestoringGeneratedTabs = false;
       notifyListeners();
     }
+  }
+
+  Future<void> _loadHomeWidgetPreferences() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedIds = prefs.getStringList(_homeWidgetsKey);
+      if (storedIds == null || storedIds.isEmpty) {
+        return;
+      }
+
+      final storedWidgets = storedIds
+          .map(_homeWidgetFromId)
+          .whereType<HomeWidgetType>()
+          .toList();
+      if (storedWidgets.isEmpty) {
+        return;
+      }
+
+      _visibleHomeWidgets
+        ..clear()
+        ..addAll(storedWidgets);
+    } finally {
+      isRestoringHomeWidgets = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _saveHomeWidgetPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setStringList(
+      _homeWidgetsKey,
+      _visibleHomeWidgets.map((widget) => widget.id).toList(),
+    );
+  }
+
+  HomeWidgetType? _homeWidgetFromId(String id) {
+    for (final widget in HomeWidgetType.values) {
+      if (widget.id == id) {
+        return widget;
+      }
+    }
+
+    return null;
   }
 }
