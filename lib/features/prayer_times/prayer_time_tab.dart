@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'controller/prayer_time_controller.dart';
+import 'model/prayer_time_offsets.dart';
 import 'widgets/prayer_header.dart';
 import 'widgets/next_prayer_card.dart';
 import 'widgets/prayer_list.dart';
 import 'widgets/footer_info.dart';
+import 'ui/prayer_time_offset_settings_page.dart';
 import 'ui/prayer_time_settings_page.dart';
 
 class PrayerTimeTab extends StatelessWidget {
@@ -22,6 +24,24 @@ class PrayerTimeTab extends StatelessWidget {
 
 class _PrayerTimeView extends StatelessWidget {
   const _PrayerTimeView();
+
+  Future<void> _handleOffsetSettingsTap(
+    BuildContext context,
+    PrayerTimeController controller,
+  ) async {
+    final result = await Navigator.of(context).push<PrayerTimeOffsets>(
+      MaterialPageRoute<PrayerTimeOffsets>(
+        builder: (_) =>
+            PrayerTimeOffsetSettingsPage(initialOffsets: controller.offsets),
+      ),
+    );
+
+    if (!context.mounted || result == null) {
+      return;
+    }
+
+    await context.read<PrayerTimeController>().updateOffsets(result);
+  }
 
   Future<void> _handleLocationTap(
     BuildContext context,
@@ -158,7 +178,10 @@ class _PrayerTimeView extends StatelessWidget {
 
         const SizedBox(height: 20),
 
-        FooterInfo(sunrise: data.sunrise),
+        FooterInfo(
+          sunrise: data.sunrise,
+          onOpenOffsets: () => _handleOffsetSettingsTap(context, controller),
+        ),
       ],
     );
   }
