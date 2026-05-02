@@ -7,6 +7,7 @@ import '../service/hadith_service.dart';
 
 class HadithController extends ChangeNotifier {
   final HadithService _service = HadithService();
+  bool _disposed = false;
 
   final Map<String, List<HadithBook>> _booksCache = {};
   final Map<String, List<Hadith>> _bookHadithCache = {};
@@ -16,6 +17,12 @@ class HadithController extends ChangeNotifier {
   bool isLoadingCollections = false;
   String? loadingError;
 
+  void _safeNotifyListeners() {
+    if (!_disposed) {
+      notifyListeners();
+    }
+  }
+
   Future<void> initialize() async {
     if (collections.isNotEmpty || isLoadingCollections) {
       return;
@@ -23,17 +30,26 @@ class HadithController extends ChangeNotifier {
 
     isLoadingCollections = true;
     loadingError = null;
-    notifyListeners();
+    _safeNotifyListeners();
 
     try {
       await _service.initialize();
+      if (_disposed) {
+        return;
+      }
       collections = await _service.fetchCollections();
+      if (_disposed) {
+        return;
+      }
     } catch (error) {
+      if (_disposed) {
+        return;
+      }
       loadingError = 'Unable to load hadith library.';
       collections = [];
     } finally {
       isLoadingCollections = false;
-      notifyListeners();
+      _safeNotifyListeners();
     }
   }
 
@@ -97,6 +113,7 @@ class HadithController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _service.dispose();
     super.dispose();
   }
