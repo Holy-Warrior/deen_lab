@@ -170,14 +170,45 @@ class PrayerTimeController extends ChangeNotifier {
 
   Future<bool> openAppSettings() => _locationService.openAppSettings();
 
-  void changeCity(String newCity) {
+  Future<void> changeCity(String newCity) async {
+    isLoading = true;
+    locationError = null;
     city = newCity;
-    load();
+    _safeNotifyListeners();
+    await _cacheService.saveSettings(
+      city: city,
+      country: country,
+      method: method.apiValue,
+      offsets: offsets,
+    );
+
+    await _loadPrayerTimes();
+    if (_disposed) {
+      return;
+    }
+
+    isLoading = false;
+    _safeNotifyListeners();
   }
 
-  void changeMethod(PrayerMethod newMethod) {
+  Future<void> changeMethod(PrayerMethod newMethod) async {
+    isLoading = true;
     method = newMethod;
-    load();
+    _safeNotifyListeners();
+    await _cacheService.saveSettings(
+      city: city,
+      country: country,
+      method: method.apiValue,
+      offsets: offsets,
+    );
+
+    await _loadPrayerTimes();
+    if (_disposed) {
+      return;
+    }
+
+    isLoading = false;
+    _safeNotifyListeners();
   }
 
   Future<void> updateOffsets(PrayerTimeOffsets newOffsets) async {
