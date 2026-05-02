@@ -208,9 +208,45 @@ class _CompassCard extends StatelessWidget {
                   ),
                 ),
               ),
-              ..._buildMarkers(theme),
               Transform.rotate(
-                angle: _compassAngleRadians(),
+                angle: _dialAngleRadians(),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    ..._buildMarkers(theme),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('N', style: theme.textTheme.titleMedium),
+                        const SizedBox(height: 162),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(width: 162),
+                        Text('E', style: theme.textTheme.titleMedium),
+                      ],
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 162),
+                        Text('S', style: theme.textTheme.titleMedium),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('W', style: theme.textTheme.titleMedium),
+                        const SizedBox(width: 162),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Transform.rotate(
+                angle: _needleAngleRadians(),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
@@ -233,34 +269,6 @@ class _CompassCard extends StatelessWidget {
                     const SizedBox(height: 74),
                   ],
                 ),
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('N', style: theme.textTheme.titleMedium),
-                  const SizedBox(height: 162),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(width: 162),
-                  Text('E', style: theme.textTheme.titleMedium),
-                ],
-              ),
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: 162),
-                  Text('S', style: theme.textTheme.titleMedium),
-                ],
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('W', style: theme.textTheme.titleMedium),
-                  const SizedBox(width: 162),
-                ],
               ),
               Container(
                 width: 92,
@@ -313,7 +321,16 @@ class _CompassCard extends StatelessWidget {
     return markers;
   }
 
-  double _compassAngleRadians() {
+  double _dialAngleRadians() {
+    final headingValue = heading;
+    if (headingValue == null) {
+      return 0;
+    }
+
+    return -headingValue * math.pi / 180;
+  }
+
+  double _needleAngleRadians() {
     final headingValue = heading;
     if (headingValue == null) {
       return degrees * math.pi / 180;
