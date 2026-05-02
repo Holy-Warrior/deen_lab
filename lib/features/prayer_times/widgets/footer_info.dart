@@ -6,8 +6,9 @@ import '../model/prayer_method.dart';
 
 class FooterInfo extends StatelessWidget {
   final String sunrise;
+  final VoidCallback? onOpenOffsets;
 
-  const FooterInfo({super.key, required this.sunrise});
+  const FooterInfo({super.key, required this.sunrise, this.onOpenOffsets});
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +35,18 @@ class FooterInfo extends StatelessWidget {
               controller.changeMethod(value);
             }
           },
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: onOpenOffsets,
+          icon: const Icon(Icons.tune),
+          label: const Text('Adjust Offsets'),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Fajr ${controller.offsets.summaryFor('fajr')} • '
+          'Dhuhr ${controller.offsets.summaryFor('dhuhr')} • '
+          'Asr ${controller.offsets.summaryFor('asr')}',
         ),
       ],
     );

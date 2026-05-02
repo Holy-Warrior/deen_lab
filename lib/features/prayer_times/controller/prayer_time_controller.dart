@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../model/prayer_time_model.dart';
 import '../model/prayer_method.dart';
+import '../model/prayer_time_offsets.dart';
 import '../service/prayer_time_service.dart';
 import '../service/location_service.dart';
 import '../service/cache_service.dart';
@@ -29,8 +30,10 @@ class PrayerTimeController extends ChangeNotifier {
   String? locationError;
 
   String city = "Peshawar";
+  String country = "Pakistan";
 
   PrayerMethod method = PrayerMethod.karachi;
+  PrayerTimeOffsets offsets = PrayerTimeOffsets.defaults;
 
   String nextPrayerName = "";
   String nextPrayerTime = "";
@@ -49,14 +52,14 @@ class PrayerTimeController extends ChangeNotifier {
     isLoading = true;
     _safeNotifyListeners();
 
-    // Load saved city first
-    final savedCity = await _cacheService.loadCity();
+    final settings = await _cacheService.loadSettings();
     if (_disposed) {
       return;
     }
-    if (savedCity != null) {
-      city = savedCity;
-    }
+    city = settings.city ?? city;
+    country = settings.country ?? country;
+    method = _methodFromApiValue(settings.method) ?? method;
+    offsets = settings.offsets;
 
     await _loadPrayerTimes();
     if (_disposed) {
@@ -71,15 +74,33 @@ class PrayerTimeController extends ChangeNotifier {
     try {
       data = await _service.fetchPrayerTimes(
         city: city,
+        country: country,
         method: method.apiValue,
+        offsets: offsets,
       );
 
-      await _cacheService.savePrayer(data!);
-      await _cacheService.saveCity(city);
+      await _cacheService.savePrayer(
+        data!,
+        city: city,
+        country: country,
+        method: method.apiValue,
+        offsets: offsets,
+      );
+      await _cacheService.saveSettings(
+        city: city,
+        country: country,
+        method: method.apiValue,
+        offsets: offsets,
+      );
 
       error = null;
     } catch (e) {
-      final cached = await _cacheService.loadPrayer();
+      final cached = await _cacheService.loadPrayer(
+        city: city,
+        country: country,
+        method: method.apiValue,
+        offsets: offsets,
+      );
       if (_disposed) {
         return;
       }
@@ -113,12 +134,13 @@ class PrayerTimeController extends ChangeNotifier {
       locationError = null;
       _safeNotifyListeners();
 
-      final detectedCity = await _locationService.getCity();
+      final details = await _locationService.getLocationDetails();
       if (_disposed) {
         return LocationActionResult.failed;
       }
 
-      city = detectedCity;
+      city = details.city;
+      country = details.country;
 
       await _loadPrayerTimes();
       return LocationActionResult.success;
@@ -156,6 +178,41 @@ class PrayerTimeController extends ChangeNotifier {
   void changeMethod(PrayerMethod newMethod) {
     method = newMethod;
     load();
+  }
+
+  Future<void> updateOffsets(PrayerTimeOffsets newOffsets) async {
+    isLoading = true;
+    _safeNotifyListeners();
+
+    offsets = newOffsets;
+    await _cacheService.saveSettings(
+      city: city,
+      country: country,
+      method: method.apiValue,
+      offsets: offsets,
+    );
+
+    await _loadPrayerTimes();
+    if (_disposed) {
+      return;
+    }
+
+    isLoading = false;
+    _safeNotifyListeners();
+  }
+
+  PrayerMethod? _methodFromApiValue(int? value) {
+    if (value == null) {
+      return null;
+    }
+
+    for (final candidate in PrayerMethod.values) {
+      if (candidate.apiValue == value) {
+        return candidate;
+      }
+    }
+
+    return null;
   }
 
   void _startTimer() {
