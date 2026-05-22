@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'app_shell/tab_screen.dart';
+import 'app_shell/home_screen.dart';
 
 class DeenLabApp extends StatelessWidget {
   const DeenLabApp({super.key});
@@ -87,7 +87,7 @@ class DeenLabApp extends StatelessWidget {
         ),
       ),
 
-      home: const TabScreen(),
+      home: const HomeScreen(),
     );
   }
 }
