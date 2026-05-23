@@ -9,6 +9,7 @@ import '../features/prayer_times/controller/prayer_time_controller.dart';
 import '../features/qibla/controller/qibla_controller.dart';
 import '../features/quran/controller/quran_controller.dart';
 import '../features/sehri_iftari/controller/sehri_iftari_controller.dart';
+import '../features/dua/controller/dua_controller.dart';
 
 // ---------------------------------------------------------------------------
 // App Shell
@@ -71,6 +72,17 @@ final sehriIftariControllerProvider =
     ChangeNotifierProvider<SehriIftariController>((ref) {
   final controller = SehriIftariController();
   controller.load();
+  return controller;
+});
+
+// ---------------------------------------------------------------------------
+// Dua
+// ---------------------------------------------------------------------------
+
+final duaControllerProvider =
+    ChangeNotifierProvider<DuaController>((ref) {
+  final controller = DuaController();
+  controller.initialize();
   return controller;
 });
 

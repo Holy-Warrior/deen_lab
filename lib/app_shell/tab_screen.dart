@@ -5,6 +5,7 @@ import 'package:deen_lab/features/prayer_times/prayer_time_tab.dart';
 import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
 import 'package:deen_lab/features/quran/ui/quran_tab.dart';
 import 'package:deen_lab/features/sehri_iftari/ui/sehri_iftari_tab.dart';
+import 'package:deen_lab/features/dua/ui/dua_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:widget_git_release_checker/widget_git_release_checker.dart';
@@ -72,6 +73,8 @@ class _TabScreenBodyState extends ConsumerState<_TabScreenBody>
         return const QuranTab();
       case TabType.hadees:
         return const HadeesTab();
+      case TabType.dua:
+        return const DuaTab();
       case TabType.generatedFeature:
         return GeneratedFeatureWebViewTab(feature: tab.generatedFeature!);
       case TabType.text:

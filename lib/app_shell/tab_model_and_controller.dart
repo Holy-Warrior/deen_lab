@@ -26,6 +26,7 @@ enum TabType {
   qibla,
   quran,
   hadees,
+  dua,
   generatedFeature,
 }
 
@@ -35,6 +36,7 @@ enum HomeWidgetType {
   qibla,
   quran,
   hadees,
+  dua,
 }
 
 extension HomeWidgetTypeX on HomeWidgetType {
@@ -50,6 +52,8 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return 'quran';
       case HomeWidgetType.hadees:
         return 'hadees';
+      case HomeWidgetType.dua:
+        return 'dua';
     }
   }
 
@@ -65,6 +69,8 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return 'Quran';
       case HomeWidgetType.hadees:
         return 'Hadees';
+      case HomeWidgetType.dua:
+        return 'Dua';
     }
   }
 
@@ -80,6 +86,8 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return Icons.menu_book_rounded;
       case HomeWidgetType.hadees:
         return Icons.auto_stories_rounded;
+      case HomeWidgetType.dua:
+        return Icons.volunteer_activism_rounded;
     }
   }
 }
@@ -202,6 +210,7 @@ class DeenLabTabController extends ChangeNotifier {
       DeenLabTab(id: 'qibla', title: 'Qibla', type: TabType.qibla),
       DeenLabTab(id: 'quran', title: 'Quran', type: TabType.quran),
       DeenLabTab(id: 'hadees', title: 'Hadees', type: TabType.hadees),
+      DeenLabTab(id: 'dua', title: 'Dua', type: TabType.dua),
       ..._generatedFeatures.map(
         (feature) => DeenLabTab(
           id: feature.id,

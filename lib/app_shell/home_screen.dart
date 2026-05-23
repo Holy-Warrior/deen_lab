@@ -5,6 +5,7 @@ import 'package:deen_lab/features/prayer_times/prayer_time_tab.dart';
 import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
 import 'package:deen_lab/features/quran/ui/quran_tab.dart';
 import 'package:deen_lab/features/sehri_iftari/ui/sehri_iftari_tab.dart';
+import 'package:deen_lab/features/dua/ui/dua_tab.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:widget_git_release_checker/widget_git_release_checker.dart';
@@ -38,12 +39,7 @@ class _HomeScreenBody extends StatelessWidget {
       ),
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          SafeArea(
-            top: false,
-            child: _PrayerStrip(),
-          ),
-        ],
+        children: const [SafeArea(top: false, child: _PrayerStrip())],
       ),
     );
   }
@@ -144,7 +140,8 @@ class _BentoGrid extends StatelessWidget {
                 icon: Icons.access_time_filled_rounded,
                 label: 'Prayer Times',
                 accent: const Color(0xFF4CAF7D),
-                onTap: () => _openPage(context, const PrayerTimeTab(), 'Prayer Times'),
+                onTap: () =>
+                    _openPage(context, const PrayerTimeTab(), 'Prayer Times'),
               ),
               _FeatureCard(
                 type: _CardType.quran,
@@ -165,7 +162,11 @@ class _BentoGrid extends StatelessWidget {
                 icon: Icons.nights_stay_rounded,
                 label: 'Sehri & Iftari',
                 accent: const Color(0xFF5BB3E8),
-                onTap: () => _openPage(context, const SehriIftariTab(), 'Sehri & Iftari'),
+                onTap: () => _openPage(
+                  context,
+                  const SehriIftariTab(),
+                  'Sehri & Iftari',
+                ),
               ),
               _FeatureCard(
                 type: _CardType.hadees,
@@ -173,6 +174,13 @@ class _BentoGrid extends StatelessWidget {
                 label: 'Hadees',
                 accent: const Color(0xFFE85B8A),
                 onTap: () => _openPage(context, const HadeesTab(), 'Hadees'),
+              ),
+              _FeatureCard(
+                type: _CardType.dua,
+                icon: Icons.volunteer_activism_rounded,
+                label: 'Dua',
+                accent: const Color(0xFF4CB3AF),
+                onTap: () => _openPage(context, const DuaTab(), 'Dua'),
               ),
               ...generatedFeatures.map(
                 (feature) => _FeatureCard(
@@ -188,7 +196,11 @@ class _BentoGrid extends StatelessWidget {
                 ),
               ),
               _AddNewCard(
-                onTap: () => _openPage(context, const FeatureStudioTab(), 'Feature Studio'),
+                onTap: () => _openPage(
+                  context,
+                  const FeatureStudioTab(),
+                  'Feature Studio',
+                ),
               ),
             ]),
           ),
@@ -206,7 +218,7 @@ class _BentoGrid extends StatelessWidget {
   }
 }
 
-enum _CardType { prayer, quran, qibla, sehri, hadees, generated }
+enum _CardType { prayer, quran, qibla, sehri, hadees, dua, generated }
 
 class _FeatureCard extends StatefulWidget {
   const _FeatureCard({
@@ -241,9 +253,10 @@ class _FeatureCardState extends State<_FeatureCard>
       lowerBound: 0.0,
       upperBound: 1.0,
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.94,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -271,10 +284,8 @@ class _FeatureCardState extends State<_FeatureCard>
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnim,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnim.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnim.value, child: child),
         child: Container(
           decoration: BoxDecoration(
             color: cardBg,
@@ -371,9 +382,10 @@ class _AddNewCardState extends State<_AddNewCard>
       lowerBound: 0.0,
       upperBound: 1.0,
     );
-    _scaleAnim = Tween<double>(begin: 1.0, end: 0.94).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-    );
+    _scaleAnim = Tween<double>(
+      begin: 1.0,
+      end: 0.94,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
   }
 
   @override
@@ -397,10 +409,8 @@ class _AddNewCardState extends State<_AddNewCard>
       onTapCancel: () => _controller.reverse(),
       child: AnimatedBuilder(
         animation: _scaleAnim,
-        builder: (context, child) => Transform.scale(
-          scale: _scaleAnim.value,
-          child: child,
-        ),
+        builder: (context, child) =>
+            Transform.scale(scale: _scaleAnim.value, child: child),
         child: DottedBorderCard(
           isDark: isDark,
           colorScheme: colorScheme,
@@ -522,10 +532,7 @@ class _DashedBorderPainter extends CustomPainter {
       double distance = 0;
       while (distance < metric.length) {
         canvas.drawPath(
-          metric.extractPath(
-            distance,
-            distance + dashWidth,
-          ),
+          metric.extractPath(distance, distance + dashWidth),
           paint,
         );
         distance += dashWidth + dashSpace;
@@ -550,11 +557,7 @@ class _FeaturePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(title),
-        centerTitle: true,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: Text(title), centerTitle: true, elevation: 0),
       body: child,
     );
   }
@@ -576,10 +579,8 @@ class _PrayerStrip extends ConsumerWidget {
   void _openPrayerPage(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
-        builder: (_) => const _FeaturePage(
-          title: 'Prayer Times',
-          child: PrayerTimeTab(),
-        ),
+        builder: (_) =>
+            const _FeaturePage(title: 'Prayer Times', child: PrayerTimeTab()),
       ),
     );
   }
@@ -599,7 +600,11 @@ class _PrayerStrip extends ConsumerWidget {
         onTap: null,
         child: Row(
           children: [
-            Icon(Icons.access_time_rounded, size: 18, color: colorScheme.primary),
+            Icon(
+              Icons.access_time_rounded,
+              size: 18,
+              color: colorScheme.primary,
+            ),
             const SizedBox(width: 10),
             Text(
               'Loading prayer times…',
@@ -620,7 +625,11 @@ class _PrayerStrip extends ConsumerWidget {
         onTap: () => _openPrayerPage(context),
         child: Row(
           children: [
-            Icon(Icons.error_outline_rounded, size: 18, color: colorScheme.error),
+            Icon(
+              Icons.error_outline_rounded,
+              size: 18,
+              color: colorScheme.error,
+            ),
             const SizedBox(width: 10),
             Text(
               'Prayer times unavailable — tap to retry',
@@ -634,7 +643,9 @@ class _PrayerStrip extends ConsumerWidget {
     }
 
     final icon = _prayerIcons[ctrl.nextPrayerName] ?? Icons.access_time_rounded;
-    final accentGreen = isDark ? const Color(0xFF4CAF7D) : const Color(0xFF2E7D5E);
+    final accentGreen = isDark
+        ? const Color(0xFF4CAF7D)
+        : const Color(0xFF2E7D5E);
 
     return _StripShell(
       isDark: isDark,
@@ -730,9 +741,7 @@ class _StripShell extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(12, 6, 12, 10),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark
-              ? const Color(0xFF161B22)
-              : Colors.white,
+          color: isDark ? const Color(0xFF161B22) : Colors.white,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isDark

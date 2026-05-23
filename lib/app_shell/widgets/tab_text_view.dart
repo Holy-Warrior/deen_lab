@@ -84,6 +84,10 @@ class _HomeDashboard extends ConsumerWidget {
         return _HadithSummaryCard(
           onOpen: () => _openTab(context, 'hadees'),
         );
+      case HomeWidgetType.dua:
+        return _DuaSummaryCard(
+          onOpen: () => _openTab(context, 'dua'),
+        );
     }
   }
 
@@ -358,6 +362,49 @@ class _HadithSummaryCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   '$totalHadith hadith available',
+                  style: theme.textTheme.bodyMedium,
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+class _DuaSummaryCard extends ConsumerWidget {
+  const _DuaSummaryCard({required this.onOpen});
+
+  final VoidCallback onOpen;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(duaControllerProvider);
+    final theme = Theme.of(context);
+
+    return _HomeCard(
+      title: 'Dua',
+      onTap: onOpen,
+      icon: HomeWidgetType.dua.icon,
+      child: controller.isLoadingCategories
+          ? const _MiniLoading()
+          : controller.categories.isEmpty
+          ? _MiniError(
+              message: controller.categoriesError ?? 'Dua library unavailable',
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '\${controller.categories.length} categories',
+                  style: theme.textTheme.labelLarge,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  controller.categories.first.name,
+                  style: theme.textTheme.titleMedium,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Authentic Sunnah Duas',
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
