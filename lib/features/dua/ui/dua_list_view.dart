@@ -95,8 +95,7 @@ class _DuaListViewState extends ConsumerState<DuaListView> {
     final q = query.toLowerCase();
 
     final filtered = _duas.where((d) {
-      return d.title.toLowerCase().contains(q) ||
-             d.translation.toLowerCase().contains(q);
+      return d.title.toLowerCase().contains(q);
     }).toList();
 
     return Column(
@@ -105,7 +104,7 @@ class _DuaListViewState extends ConsumerState<DuaListView> {
           padding: const EdgeInsets.all(12),
           child: TextField(
             decoration: InputDecoration(
-              hintText: "Search by title or translation",
+              hintText: "Search by title",
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -123,11 +122,6 @@ class _DuaListViewState extends ConsumerState<DuaListView> {
 
               return ListTile(
                 title: _highlight(dua.title.isNotEmpty ? dua.title : 'Dua \${index + 1}', query),
-                subtitle: Text(
-                  dua.translation,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
                 onTap: () {
                   Navigator.push(
                     context,
@@ -135,6 +129,7 @@ class _DuaListViewState extends ConsumerState<DuaListView> {
                       builder: (_) => DuaReaderScreen(
                         dua: dua,
                         categoryName: widget.category.name,
+                        categorySlug: widget.category.slug,
                       ),
                     ),
                   );

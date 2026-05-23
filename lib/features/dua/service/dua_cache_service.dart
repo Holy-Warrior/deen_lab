@@ -43,14 +43,14 @@ class DuaCacheService {
   Future<void> saveDuasForCategory(String slug, List<Dua> duas) async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = duas.map((d) => d.toJson()).toList();
-    await prefs.setString('dua_category_${slug}', jsonEncode(jsonList));
-    await prefs.setInt('dua_category_timestamp_${slug}', DateTime.now().millisecondsSinceEpoch);
+    await prefs.setString('dua_category_v2_${slug}', jsonEncode(jsonList));
+    await prefs.setInt('dua_category_timestamp_v2_${slug}', DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<List<Dua>?> loadDuasForCategory(String slug) async {
     final prefs = await SharedPreferences.getInstance();
     
-    final timestamp = prefs.getInt('dua_category_timestamp_${slug}');
+    final timestamp = prefs.getInt('dua_category_timestamp_v2_${slug}');
     if (timestamp != null) {
       final cacheDate = DateTime.fromMillisecondsSinceEpoch(timestamp);
       if (DateTime.now().difference(cacheDate) > _cacheTtl) {
@@ -61,7 +61,7 @@ class DuaCacheService {
       return null;
     }
 
-    final jsonString = prefs.getString('dua_category_${slug}');
+    final jsonString = prefs.getString('dua_category_v2_${slug}');
     if (jsonString != null) {
       final List<dynamic> jsonList = jsonDecode(jsonString);
       return jsonList.map((json) => Dua.fromJson(json)).toList();

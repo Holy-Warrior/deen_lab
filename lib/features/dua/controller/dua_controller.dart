@@ -44,6 +44,7 @@ class DuaController extends ChangeNotifier {
         
         // Fetch fresh data in the background
         _refreshCategoriesInBackground();
+        _prefetchAllDuas(cachedCategories);
       } else {
         // Cache miss or expired, fetch from API
         final fetchedCategories = await _service.fetchCategories();
@@ -51,6 +52,7 @@ class DuaController extends ChangeNotifier {
         
         categories = fetchedCategories;
         await _cacheService.saveCategories(categories);
+        _prefetchAllDuas(categories);
       }
     } catch (e) {
       if (_disposed) return;
@@ -63,6 +65,13 @@ class DuaController extends ChangeNotifier {
       isLoadingCategories = false;
       _safeNotifyListeners();
     }
+  }
+
+  Future<void> _prefetchAllDuas(List<DuaCategory> cats) async {
+    for (final category in cats) {
+      await loadDuasForCategory(category.slug);
+    }
+    _safeNotifyListeners(); // Notify when all are loaded so global search works
   }
 
   Future<void> _refreshCategoriesInBackground() async {
@@ -81,7 +90,11 @@ class DuaController extends ChangeNotifier {
 
   Future<List<Dua>> loadDuasForCategory(String categorySlug) async {
     if (_duaCache.containsKey(categorySlug)) {
-      return _duaCache[categorySlug]!;
+      final cached = _duaCache[categorySlug]!;
+      // Invalidate if the cache contains old models without IDs
+      if (cached.isNotEmpty && cached.first.id != null) {
+        return cached;
+      }
     }
 
     try {
@@ -121,6 +134,37 @@ class DuaController extends ChangeNotifier {
     } catch (_) {
       // Ignore background refresh errors
     }
+  }
+
+  List<Dua> searchAllCachedDuas(String query) {
+    if (query.isEmpty) return [];
+    
+    final lowerQuery = query.toLowerCase();
+    final List<Dua> results = [];
+
+    for (final category in categories) {
+      final duas = _duaCache[category.slug] ?? [];
+      for (final dua in duas) {
+        if (dua.title.toLowerCase().contains(lowerQuery)) {
+          // Double check it has category name for the UI
+          final duaWithCategory = dua.categoryName == null 
+              ? Dua(
+                  id: dua.id,
+                  title: dua.title,
+                  categorySlug: category.slug,
+                  categoryName: category.name,
+                  arabic: dua.arabic,
+                  transliteration: dua.transliteration,
+                  translation: dua.translation,
+                  source: dua.source,
+                  notes: dua.notes,
+                )
+              : dua;
+          results.add(duaWithCategory);
+        }
+      }
+    }
+    return results;
   }
 
   @override
