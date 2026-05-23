@@ -1,21 +1,21 @@
 import 'package:deen_lab/features/quran/model/quran_reader_settings.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/quran_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/surah_model.dart';
 import '../model/ayah_model.dart';
 
-class SurahReaderScreen extends StatefulWidget {
+class SurahReaderScreen extends ConsumerStatefulWidget {
   final Surah surah;
 
   const SurahReaderScreen({super.key, required this.surah});
 
   @override
-  State<SurahReaderScreen> createState() => _SurahReaderScreenState();
+  ConsumerState<SurahReaderScreen> createState() => _SurahReaderScreenState();
 }
 
-class _SurahReaderScreenState extends State<SurahReaderScreen> {
+class _SurahReaderScreenState extends ConsumerState<SurahReaderScreen> {
   late Future<List<Ayah>> _future;
   final ScrollController _scrollController = ScrollController();
 
@@ -28,7 +28,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   void initState() {
     super.initState();
 
-    final controller = context.read<QuranController>();
+    final controller = ref.read(quranControllerProvider);
     _future = controller.loadSurah(widget.surah.number);
 
     _scrollController.addListener(() {
@@ -45,15 +45,10 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
     });
   }
 
-  void _openSettings(QuranController controller) {
+  void _openSettings() {
     showModalBottomSheet(
       context: context,
-      builder: (_) {
-        return ChangeNotifierProvider.value(
-          value: controller,
-          child: const _ReaderSettingsSheet(),
-        );
-      },
+      builder: (_) => const _ReaderSettingsSheet(),
     );
   }
 
@@ -77,7 +72,7 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<QuranController>();
+    final controller = ref.watch(quranControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -85,13 +80,13 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.tune),
-            onPressed: () => _openSettings(controller),
+            onPressed: _openSettings,
           ),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: Container(
-            color: Theme.of(context).scaffoldBackgroundColor, // 👈 separation
+            color: Theme.of(context).scaffoldBackgroundColor,
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: _buildScrubber(),
           ),
@@ -234,42 +229,40 @@ class _SurahReaderScreenState extends State<SurahReaderScreen> {
   }
 }
 
-class _ReaderSettingsSheet extends StatelessWidget {
+/// Settings bottom sheet — reads the global provider directly.
+class _ReaderSettingsSheet extends ConsumerWidget {
   const _ReaderSettingsSheet();
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<QuranController>(
-      builder: (_, c, _) {
-        final s = c.readerSettings;
+  Widget build(BuildContext context, WidgetRef ref) {
+    final c = ref.watch(quranControllerProvider);
+    final s = c.readerSettings;
 
-        return Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                "Reader Settings",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              Slider(
-                min: 18,
-                max: 32,
-                value: s.fontSize,
-                onChanged: c.updateFontSize,
-              ),
-              ElevatedButton(
-                onPressed: c.toggleMode,
-                child: Text(
-                  s.mode == QuranReadingMode.mushaf
-                      ? "Study Mode"
-                      : "Mushaf Mode",
-                ),
-              ),
-            ],
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Text(
+            "Reader Settings",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
           ),
-        );
-      },
+          Slider(
+            min: 18,
+            max: 32,
+            value: s.fontSize,
+            onChanged: c.updateFontSize,
+          ),
+          ElevatedButton(
+            onPressed: c.toggleMode,
+            child: Text(
+              s.mode == QuranReadingMode.mushaf
+                  ? "Study Mode"
+                  : "Mushaf Mode",
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

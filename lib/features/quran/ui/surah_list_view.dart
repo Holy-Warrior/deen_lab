@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/quran_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/surah_model.dart';
 import 'surah_reader_screen.dart';
 
-class SurahListView extends StatefulWidget {
+class SurahListView extends ConsumerStatefulWidget {
   const SurahListView({super.key});
 
   @override
-  State<SurahListView> createState() => _SurahListViewState();
+  ConsumerState<SurahListView> createState() => _SurahListViewState();
 }
 
-class _SurahListViewState extends State<SurahListView> {
+class _SurahListViewState extends ConsumerState<SurahListView> {
   String query = "";
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<QuranController>();
+    final controller = ref.watch(quranControllerProvider);
 
     if (controller.isSurahListLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -66,10 +66,7 @@ class _SurahListViewState extends State<SurahListView> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ChangeNotifierProvider.value(
-                        value: controller,
-                        child: SurahReaderScreen(surah: s),
-                      ),
+                      builder: (_) => SurahReaderScreen(surah: s),
                     ),
                   );
                 },

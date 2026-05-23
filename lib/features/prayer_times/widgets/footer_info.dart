@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/prayer_time_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/prayer_method.dart';
 
-class FooterInfo extends StatelessWidget {
+class FooterInfo extends ConsumerWidget {
   final String sunrise;
   final VoidCallback? onOpenOffsets;
 
   const FooterInfo({super.key, required this.sunrise, this.onOpenOffsets});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<PrayerTimeController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(prayerTimeControllerProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

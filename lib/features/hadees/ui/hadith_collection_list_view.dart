@@ -1,27 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/hadith_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/hadith_collection_model.dart';
 import 'hadith_book_list_view.dart';
 import 'hadith_search_view.dart';
 
-class HadithCollectionListView extends StatefulWidget {
+class HadithCollectionListView extends ConsumerStatefulWidget {
   const HadithCollectionListView({super.key});
 
   @override
-  State<HadithCollectionListView> createState() =>
+  ConsumerState<HadithCollectionListView> createState() =>
       _HadithCollectionListViewState();
 }
 
-class _HadithCollectionListViewState extends State<HadithCollectionListView> {
+class _HadithCollectionListViewState
+    extends ConsumerState<HadithCollectionListView> {
   String query = '';
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final controller = context.watch<HadithController>();
+    final controller = ref.watch(hadithControllerProvider);
 
     if (controller.isLoadingCollections) {
       return const Center(child: CircularProgressIndicator());
@@ -112,10 +113,7 @@ class _HadithCollectionListViewState extends State<HadithCollectionListView> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider.value(
-                            value: controller,
-                            child: const HadithSearchView(),
-                          ),
+                          builder: (_) => const HadithSearchView(),
                         ),
                       );
                     },
@@ -155,13 +153,13 @@ class _HadithCollectionListViewState extends State<HadithCollectionListView> {
   }
 }
 
-class _CollectionCard extends StatelessWidget {
+class _CollectionCard extends ConsumerWidget {
   const _CollectionCard({required this.collection});
 
   final HadithCollectionSummary collection;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -170,13 +168,9 @@ class _CollectionCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: () {
-          final controller = context.read<HadithController>();
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider.value(
-                value: controller,
-                child: HadithBookListView(collection: collection),
-              ),
+              builder: (_) => HadithBookListView(collection: collection),
             ),
           );
         },

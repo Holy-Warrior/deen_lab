@@ -1,26 +1,27 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/hadith_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/hadith_book_model.dart';
 import '../model/hadith_collection_model.dart';
 import 'hadith_list_view.dart';
 
-class HadithBookListView extends StatefulWidget {
+class HadithBookListView extends ConsumerStatefulWidget {
   const HadithBookListView({super.key, required this.collection});
 
   final HadithCollectionSummary collection;
 
   @override
-  State<HadithBookListView> createState() => _HadithBookListViewState();
+  ConsumerState<HadithBookListView> createState() =>
+      _HadithBookListViewState();
 }
 
-class _HadithBookListViewState extends State<HadithBookListView> {
+class _HadithBookListViewState extends ConsumerState<HadithBookListView> {
   String query = '';
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.read<HadithController>();
+    final controller = ref.read(hadithControllerProvider);
     final theme = Theme.of(context);
 
     return Scaffold(
@@ -92,10 +93,7 @@ class _HadithBookListViewState extends State<HadithBookListView> {
                         onTap: () {
                           Navigator.of(context).push(
                             MaterialPageRoute(
-                              builder: (_) => ChangeNotifierProvider.value(
-                                value: controller,
-                                child: HadithListView(book: book),
-                              ),
+                              builder: (_) => HadithListView(book: book),
                             ),
                           );
                         },

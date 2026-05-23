@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../providers/app_providers.dart';
 import '../../../config/groq_config.dart';
-import '../controller/feature_studio_controller.dart';
 import '../model/feature_history_entry.dart';
 import 'feature_studio_history_screen.dart';
 
-class FeatureStudioView extends StatefulWidget {
+class FeatureStudioView extends ConsumerStatefulWidget {
   const FeatureStudioView({super.key});
 
   @override
-  State<FeatureStudioView> createState() => _FeatureStudioViewState();
+  ConsumerState<FeatureStudioView> createState() => _FeatureStudioViewState();
 }
 
-class _FeatureStudioViewState extends State<FeatureStudioView> {
+class _FeatureStudioViewState extends ConsumerState<FeatureStudioView> {
   late final TextEditingController _promptController;
 
   @override
@@ -30,7 +30,7 @@ class _FeatureStudioViewState extends State<FeatureStudioView> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<FeatureStudioController>();
+    final controller = ref.watch(featureStudioControllerProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 
@@ -65,10 +65,7 @@ class _FeatureStudioViewState extends State<FeatureStudioView> {
                     onPressed: () {
                       Navigator.of(context).push(
                         MaterialPageRoute(
-                          builder: (_) => ChangeNotifierProvider.value(
-                            value: controller,
-                            child: const FeatureStudioHistoryScreen(),
-                          ),
+                          builder: (_) => const FeatureStudioHistoryScreen(),
                         ),
                       );
                     },

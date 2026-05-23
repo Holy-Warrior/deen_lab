@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../providers/app_providers.dart';
 import 'controller/prayer_time_controller.dart';
 import 'model/prayer_time_offsets.dart';
 import 'widgets/prayer_header.dart';
@@ -15,18 +16,16 @@ class PrayerTimeTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => PrayerTimeController()..load(),
-      child: const _PrayerTimeView(),
-    );
+    return const _PrayerTimeView();
   }
 }
 
-class _PrayerTimeView extends StatelessWidget {
+class _PrayerTimeView extends ConsumerWidget {
   const _PrayerTimeView();
 
   Future<void> _handleOffsetSettingsTap(
     BuildContext context,
+    WidgetRef ref,
     PrayerTimeController controller,
   ) async {
     final result = await Navigator.of(context).push<PrayerTimeOffsets>(
@@ -40,7 +39,7 @@ class _PrayerTimeView extends StatelessWidget {
       return;
     }
 
-    await context.read<PrayerTimeController>().updateOffsets(result);
+    await ref.read(prayerTimeControllerProvider).updateOffsets(result);
   }
 
   Future<void> _handleLocationTap(
@@ -109,8 +108,8 @@ class _PrayerTimeView extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<PrayerTimeController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(prayerTimeControllerProvider);
 
     if (controller.isLoading) {
       return const Center(child: CircularProgressIndicator());
@@ -141,7 +140,7 @@ class _PrayerTimeView extends StatelessWidget {
               ),
             );
             if (!context.mounted) return;
-            await context.read<PrayerTimeController>().syncPrayerAutomation();
+            await ref.read(prayerTimeControllerProvider).syncPrayerAutomation();
           },
         ),
         const SizedBox(height: 16),
@@ -180,7 +179,7 @@ class _PrayerTimeView extends StatelessWidget {
 
         FooterInfo(
           sunrise: data.sunrise,
-          onOpenOffsets: () => _handleOffsetSettingsTap(context, controller),
+          onOpenOffsets: () => _handleOffsetSettingsTap(context, ref, controller),
         ),
       ],
     );

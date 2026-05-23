@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/hadith_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/hadith_model.dart';
 import 'hadith_reader_screen.dart';
 
-class HadithSearchView extends StatefulWidget {
+class HadithSearchView extends ConsumerStatefulWidget {
   const HadithSearchView({super.key});
 
   @override
-  State<HadithSearchView> createState() => _HadithSearchViewState();
+  ConsumerState<HadithSearchView> createState() => _HadithSearchViewState();
 }
 
-class _HadithSearchViewState extends State<HadithSearchView> {
+class _HadithSearchViewState extends ConsumerState<HadithSearchView> {
   String query = '';
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.read<HadithController>();
+    final controller = ref.read(hadithControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Search Hadith')),

@@ -1,5 +1,4 @@
 import 'package:deen_lab/features/feature_studio/ui/feature_studio_tab.dart';
-import 'package:deen_lab/features/prayer_times/controller/prayer_time_controller.dart';
 import 'package:deen_lab/features/feature_studio/ui/generated_feature_webview_tab.dart';
 import 'package:deen_lab/features/hadees/ui/hadees_tab.dart';
 import 'package:deen_lab/features/prayer_times/prayer_time_tab.dart';
@@ -7,9 +6,10 @@ import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
 import 'package:deen_lab/features/quran/ui/quran_tab.dart';
 import 'package:deen_lab/features/sehri_iftari/ui/sehri_iftari_tab.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:widget_git_release_checker/widget_git_release_checker.dart';
 
+import '../providers/app_providers.dart';
 import 'tab_model_and_controller.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -17,13 +17,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => DeenLabTabController()),
-        ChangeNotifierProvider(create: (_) => PrayerTimeController()..load()),
-      ],
-      child: const _HomeScreenBody(),
-    );
+    return const _HomeScreenBody();
   }
 }
 
@@ -111,10 +105,10 @@ class _UpdateBadge extends StatelessWidget {
   }
 }
 
-class _HomeGrid extends StatelessWidget {
+class _HomeGrid extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final tabCtrl = context.watch<DeenLabTabController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tabCtrl = ref.watch(deenLabTabControllerProvider);
 
     if (tabCtrl.isRestoring) {
       return const Center(child: CircularProgressIndicator());
@@ -567,8 +561,8 @@ class _FeaturePage extends StatelessWidget {
 }
 
 /// A slim bottom strip that shows the next prayer and a live countdown.
-/// It reads from the [PrayerTimeController] already provided at the [HomeScreen] level.
-class _PrayerStrip extends StatelessWidget {
+/// It reads from the [prayerTimeControllerProvider] declared globally.
+class _PrayerStrip extends ConsumerWidget {
   const _PrayerStrip();
 
   static const _prayerIcons = {
@@ -591,8 +585,8 @@ class _PrayerStrip extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final ctrl = context.watch<PrayerTimeController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ctrl = ref.watch(prayerTimeControllerProvider);
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final colorScheme = theme.colorScheme;

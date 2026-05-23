@@ -1,16 +1,16 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/qibla_controller.dart';
+import '../../../../providers/app_providers.dart';
 
-class QiblaView extends StatelessWidget {
+class QiblaView extends ConsumerWidget {
   const QiblaView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<QiblaController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(qiblaControllerProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

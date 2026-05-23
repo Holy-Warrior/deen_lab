@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../providers/app_providers.dart';
 import '../../prayer_times/model/prayer_method.dart';
 import '../controller/sehri_iftari_controller.dart';
 import '../model/sehri_iftari_day.dart';
 
-class SehriIftariView extends StatefulWidget {
+class SehriIftariView extends ConsumerStatefulWidget {
   const SehriIftariView({super.key});
 
   @override
-  State<SehriIftariView> createState() => _SehriIftariViewState();
+  ConsumerState<SehriIftariView> createState() => _SehriIftariViewState();
 }
 
-class _SehriIftariViewState extends State<SehriIftariView> {
+class _SehriIftariViewState extends ConsumerState<SehriIftariView> {
   late final TextEditingController _cityController;
   late final TextEditingController _countryController;
   PrayerMethod? _pendingMethod;
@@ -100,7 +101,7 @@ class _SehriIftariViewState extends State<SehriIftariView> {
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<SehriIftariController>();
+    final controller = ref.watch(sehriIftariControllerProvider);
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
 

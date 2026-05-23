@@ -6,9 +6,10 @@ import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
 import 'package:deen_lab/features/quran/ui/quran_tab.dart';
 import 'package:deen_lab/features/sehri_iftari/ui/sehri_iftari_tab.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:widget_git_release_checker/widget_git_release_checker.dart';
 
+import '../providers/app_providers.dart';
 import 'tab_model_and_controller.dart';
 import 'widgets/tab_text_view.dart';
 
@@ -17,21 +18,18 @@ class TabScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => DeenLabTabController(),
-      child: const _TabScreenBody(),
-    );
+    return const _TabScreenBody();
   }
 }
 
-class _TabScreenBody extends StatefulWidget {
+class _TabScreenBody extends ConsumerStatefulWidget {
   const _TabScreenBody();
 
   @override
-  State<_TabScreenBody> createState() => _TabScreenBodyState();
+  ConsumerState<_TabScreenBody> createState() => _TabScreenBodyState();
 }
 
-class _TabScreenBodyState extends State<_TabScreenBody>
+class _TabScreenBodyState extends ConsumerState<_TabScreenBody>
     with TickerProviderStateMixin {
   TabController? _tabController;
   int _currentLength = 0;
@@ -40,7 +38,7 @@ class _TabScreenBodyState extends State<_TabScreenBody>
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    final tabCtrl = context.watch<DeenLabTabController>();
+    final tabCtrl = ref.watch(deenLabTabControllerProvider);
     final tabs = tabCtrl.tabs;
 
     if (_tabController == null || _currentLength != tabs.length) {
@@ -91,7 +89,7 @@ class _TabScreenBodyState extends State<_TabScreenBody>
 
   @override
   Widget build(BuildContext context) {
-    final tabCtrl = context.watch<DeenLabTabController>();
+    final tabCtrl = ref.watch(deenLabTabControllerProvider);
     final tabs = tabCtrl.tabs;
 
     return Scaffold(
@@ -116,7 +114,7 @@ class _TabScreenBodyState extends State<_TabScreenBody>
                 controller: _tabController,
                 isScrollable: true,
                 onTap: (index) {
-                  context.read<DeenLabTabController>().setIndex(index);
+                  ref.read(deenLabTabControllerProvider).setIndex(index);
                 },
                 tabs: tabs.map((tab) => Tab(text: tab.title)).toList(),
               ),

@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/hadith_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/hadith_book_model.dart';
 import '../model/hadith_model.dart';
 import 'hadith_reader_screen.dart';
 
-class HadithListView extends StatefulWidget {
+class HadithListView extends ConsumerStatefulWidget {
   const HadithListView({super.key, required this.book});
 
   final HadithBook book;
 
   @override
-  State<HadithListView> createState() => _HadithListViewState();
+  ConsumerState<HadithListView> createState() => _HadithListViewState();
 }
 
-class _HadithListViewState extends State<HadithListView> {
+class _HadithListViewState extends ConsumerState<HadithListView> {
   String query = '';
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.read<HadithController>();
+    final controller = ref.read(hadithControllerProvider);
 
     return Scaffold(
       appBar: AppBar(

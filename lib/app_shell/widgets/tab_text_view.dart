@@ -1,36 +1,24 @@
 import 'package:deen_lab/app_shell/tab_model_and_controller.dart';
-import 'package:deen_lab/features/hadees/controller/hadith_controller.dart';
-import 'package:deen_lab/features/prayer_times/controller/prayer_time_controller.dart';
-import 'package:deen_lab/features/qibla/controller/qibla_controller.dart';
-import 'package:deen_lab/features/quran/controller/quran_controller.dart';
-import 'package:deen_lab/features/sehri_iftari/controller/sehri_iftari_controller.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../providers/app_providers.dart';
 
 class TabTextView extends StatelessWidget {
   const TabTextView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => PrayerTimeController()..load()),
-        ChangeNotifierProvider(create: (_) => SehriIftariController()..load()),
-        ChangeNotifierProvider(create: (_) => QiblaController()..load()),
-        ChangeNotifierProvider(create: (_) => QuranController()..loadSurahs()),
-        ChangeNotifierProvider(create: (_) => HadithController()..initialize()),
-      ],
-      child: const _HomeDashboard(),
-    );
+    return const _HomeDashboard();
   }
 }
 
-class _HomeDashboard extends StatelessWidget {
+class _HomeDashboard extends ConsumerWidget {
   const _HomeDashboard();
 
   @override
-  Widget build(BuildContext context) {
-    final tabController = context.watch<DeenLabTabController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final tabController = ref.watch(deenLabTabControllerProvider);
 
     if (tabController.isRestoringHomeWidgets) {
       return const Center(child: CircularProgressIndicator());
@@ -44,7 +32,7 @@ class _HomeDashboard extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             TextButton.icon(
-              onPressed: () => _openEditor(context),
+              onPressed: () => _openEditor(context, ref),
               icon: const Icon(Icons.edit_rounded),
               label: const Text('Edit'),
             ),
@@ -52,7 +40,7 @@ class _HomeDashboard extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         if (visibleWidgets.isEmpty)
-          _EmptyHomeState(onEdit: () => _openEditor(context))
+          _EmptyHomeState(onEdit: () => _openEditor(context, ref))
         else
           ..._buildVisibleCards(context, visibleWidgets),
       ],
@@ -100,21 +88,20 @@ class _HomeDashboard extends StatelessWidget {
   }
 
   void _openTab(BuildContext context, String tabId) {
-    final tabController = context.read<DeenLabTabController>();
+    // ignore: use_build_context_synchronously — intentional: this is a sync callback
+    final container = ProviderScope.containerOf(context);
+    final tabController = container.read(deenLabTabControllerProvider);
     final index = tabController.tabs.indexWhere((tab) => tab.id == tabId);
     if (index != -1) {
       tabController.setIndex(index);
     }
   }
 
-  void _openEditor(BuildContext context) {
-    final tabController = context.read<DeenLabTabController>();
+  void _openEditor(BuildContext context, WidgetRef ref) {
+    final tabController = ref.read(deenLabTabControllerProvider);
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: tabController,
-          child: const _HomeEditorScreen(),
-        ),
+        builder: (_) => _HomeEditorScreen(tabController: tabController),
       ),
     );
   }
@@ -163,14 +150,14 @@ class _EmptyHomeState extends StatelessWidget {
   }
 }
 
-class _PrayerSummaryCard extends StatelessWidget {
+class _PrayerSummaryCard extends ConsumerWidget {
   const _PrayerSummaryCard({required this.onOpen});
 
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<PrayerTimeController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(prayerTimeControllerProvider);
     final theme = Theme.of(context);
 
     return _HomeCard(
@@ -201,14 +188,14 @@ class _PrayerSummaryCard extends StatelessWidget {
   }
 }
 
-class _SehriIftariSummaryCard extends StatelessWidget {
+class _SehriIftariSummaryCard extends ConsumerWidget {
   const _SehriIftariSummaryCard({required this.onOpen});
 
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<SehriIftariController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(sehriIftariControllerProvider);
     final theme = Theme.of(context);
 
     return _HomeCard(
@@ -244,14 +231,14 @@ class _SehriIftariSummaryCard extends StatelessWidget {
   }
 }
 
-class _QiblaSummaryCard extends StatelessWidget {
+class _QiblaSummaryCard extends ConsumerWidget {
   const _QiblaSummaryCard({required this.onOpen});
 
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<QiblaController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(qiblaControllerProvider);
     final theme = Theme.of(context);
 
     return _HomeCard(
@@ -289,14 +276,14 @@ class _QiblaSummaryCard extends StatelessWidget {
   }
 }
 
-class _QuranSummaryCard extends StatelessWidget {
+class _QuranSummaryCard extends ConsumerWidget {
   const _QuranSummaryCard({required this.onOpen});
 
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<QuranController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(quranControllerProvider);
     final theme = Theme.of(context);
 
     return _HomeCard(
@@ -332,14 +319,14 @@ class _QuranSummaryCard extends StatelessWidget {
   }
 }
 
-class _HadithSummaryCard extends StatelessWidget {
+class _HadithSummaryCard extends ConsumerWidget {
   const _HadithSummaryCard({required this.onOpen});
 
   final VoidCallback onOpen;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<HadithController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(hadithControllerProvider);
     final theme = Theme.of(context);
     final totalHadith = controller.collections.fold<int>(
       0,
@@ -439,15 +426,18 @@ class _HomeCard extends StatelessWidget {
   }
 }
 
-class _HomeEditorScreen extends StatelessWidget {
-  const _HomeEditorScreen();
+class _HomeEditorScreen extends ConsumerWidget {
+  const _HomeEditorScreen({required this.tabController});
+
+  final DeenLabTabController tabController;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Re-watch for live updates while editor is open
+    final ctrl = ref.watch(deenLabTabControllerProvider);
     final theme = Theme.of(context);
-    final tabController = context.watch<DeenLabTabController>();
-    final visibleWidgets = tabController.visibleHomeWidgets;
-    final availableWidgets = tabController.availableHomeWidgets;
+    final visibleWidgets = ctrl.visibleHomeWidgets;
+    final availableWidgets = ctrl.availableHomeWidgets;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Edit Home')),
@@ -480,7 +470,7 @@ class _HomeEditorScreen extends StatelessWidget {
                           avatar: Icon(widget.icon, size: 18),
                           label: Text(widget.title),
                           onDeleted: visibleWidgets.length > 1
-                              ? () => tabController.hideHomeWidget(widget)
+                              ? () => ctrl.hideHomeWidget(widget)
                               : null,
                         ),
                       )
@@ -521,7 +511,7 @@ class _HomeEditorScreen extends StatelessWidget {
                           (widget) => ActionChip(
                             avatar: Icon(widget.icon, size: 18),
                             label: Text(widget.title),
-                            onPressed: () => tabController.showHomeWidget(widget),
+                            onPressed: () => ctrl.showHomeWidget(widget),
                           ),
                         )
                         .toList(),

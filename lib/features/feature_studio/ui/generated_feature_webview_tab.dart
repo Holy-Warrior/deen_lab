@@ -1,27 +1,19 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
-import '../../../app_shell/tab_model_and_controller.dart';
-import '../controller/generated_feature_editor_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/generated_feature.dart';
 
-class GeneratedFeatureWebViewTab extends StatefulWidget {
+class GeneratedFeatureWebViewTab extends ConsumerWidget {
   const GeneratedFeatureWebViewTab({super.key, required this.feature});
 
   final GeneratedFeature feature;
 
   @override
-  State<GeneratedFeatureWebViewTab> createState() =>
-      _GeneratedFeatureWebViewTabState();
-}
-
-class _GeneratedFeatureWebViewTabState extends State<GeneratedFeatureWebViewTab> {
-  @override
-  Widget build(BuildContext context) {
-    final feature = widget.feature;
+  Widget build(BuildContext context, WidgetRef ref) {
     final activeVersion = feature.activeVersion;
 
     return Column(
@@ -37,7 +29,7 @@ class _GeneratedFeatureWebViewTabState extends State<GeneratedFeatureWebViewTab>
                 ),
               ),
               OutlinedButton.icon(
-                onPressed: () => _openEditor(context, feature),
+                onPressed: () => _openEditor(context, ref),
                 icon: const Icon(Icons.edit_rounded),
                 label: const Text('Edit'),
               ),
@@ -53,32 +45,27 @@ class _GeneratedFeatureWebViewTabState extends State<GeneratedFeatureWebViewTab>
     );
   }
 
-  void _openEditor(BuildContext context, GeneratedFeature feature) {
-    final tabController = context.read<DeenLabTabController>();
+  void _openEditor(BuildContext context, WidgetRef ref) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) => GeneratedFeatureEditorController(
-            feature: feature,
-            tabController: tabController,
-          ),
-          child: const _GeneratedFeatureEditorScreen(),
-        ),
+        builder: (_) => _GeneratedFeatureEditorScreen(feature: feature),
       ),
     );
   }
 }
 
-class _GeneratedFeatureEditorScreen extends StatefulWidget {
-  const _GeneratedFeatureEditorScreen();
+class _GeneratedFeatureEditorScreen extends ConsumerStatefulWidget {
+  const _GeneratedFeatureEditorScreen({required this.feature});
+
+  final GeneratedFeature feature;
 
   @override
-  State<_GeneratedFeatureEditorScreen> createState() =>
+  ConsumerState<_GeneratedFeatureEditorScreen> createState() =>
       _GeneratedFeatureEditorScreenState();
 }
 
 class _GeneratedFeatureEditorScreenState
-    extends State<_GeneratedFeatureEditorScreen> {
+    extends ConsumerState<_GeneratedFeatureEditorScreen> {
   late final TextEditingController _promptController;
 
   @override
@@ -95,7 +82,9 @@ class _GeneratedFeatureEditorScreenState
 
   @override
   Widget build(BuildContext context) {
-    final controller = context.watch<GeneratedFeatureEditorController>();
+    // Use the family provider — one instance per feature
+    final controller =
+        ref.watch(generatedFeatureEditorControllerProvider(widget.feature));
     final feature = controller.feature;
     final preview = controller.previewVersion;
     final theme = Theme.of(context);
@@ -247,7 +236,8 @@ class _GeneratedFeatureEditorScreenState
                         onPressed: controller.isActivating
                             ? null
                             : () async {
-                                final messenger = ScaffoldMessenger.of(context);
+                                final messenger =
+                                    ScaffoldMessenger.of(context);
                                 await controller.activatePreview();
                                 if (!mounted) {
                                   return;

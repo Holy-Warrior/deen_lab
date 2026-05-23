@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../controller/feature_studio_controller.dart';
+import '../../../../providers/app_providers.dart';
 import '../model/feature_history_entry.dart';
 
-class FeatureStudioHistoryScreen extends StatelessWidget {
+class FeatureStudioHistoryScreen extends ConsumerWidget {
   const FeatureStudioHistoryScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.watch<FeatureStudioController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.watch(featureStudioControllerProvider);
     final history = controller.history;
 
     return Scaffold(
@@ -29,14 +29,14 @@ class FeatureStudioHistoryScreen extends StatelessWidget {
   }
 }
 
-class _HistoryCard extends StatelessWidget {
+class _HistoryCard extends ConsumerWidget {
   const _HistoryCard({required this.entry});
 
   final FeatureHistoryEntry entry;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = context.read<FeatureStudioController>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(featureStudioControllerProvider);
     final theme = Theme.of(context);
 
     return Card(
@@ -81,7 +81,7 @@ class _HistoryCard extends StatelessWidget {
 
   String _statusText(
     FeatureHistoryEntry entry,
-    FeatureStudioController controller,
+    dynamic controller,
   ) {
     switch (entry.status) {
       case FeatureHistoryStatus.generated:
