@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import { sveltekit } from "@sveltejs/kit/vite";
-import tailwind from "@tailwindcss/vite";
 // @ts-expect-error type error without @types/node package
 import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";

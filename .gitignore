@@ -6,5 +6,6 @@ node_modules
 .env
 .env.*
 !.env.example
+src-tauri/src/groq_config.rs
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
