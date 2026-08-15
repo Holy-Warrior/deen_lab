@@ -37,7 +37,11 @@ android {
             }
         }
         getByName("release") {
+            // debug flag added
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
+            // more size compression added
+            isShrinkResources = true
             proguardFiles(
                 *fileTree(".") { include("**/*.pro") }
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
