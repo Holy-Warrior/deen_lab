@@ -1,7 +1,11 @@
 <script lang="ts">
     import "../app.css";
+    import AppShell from "$lib/components/shell/AppShell.svelte";
+    import type { Snippet } from "svelte";
 
-    let {children} = $props();
+    let { children }: { children: Snippet } = $props();
 </script>
 
-{@render children()}
+<AppShell>
+    {@render children()}
+</AppShell>

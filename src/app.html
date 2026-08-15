@@ -3,7 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%sveltekit.assets%/favicon.png" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!-- tauri: viewport-fit=cover is what makes env(safe-area-inset-*) resolve to real px values instead of 0 -- required since the Android WebView here renders edge-to-edge, under the status/gesture bars -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>Tauri + SvelteKit + Typescript App</title>
     %sveltekit.head%
   </head>

@@ -1,16 +1,18 @@
+<script lang="ts">
+    import PrayerCardPlaceholder from "$lib/components/home/PrayerCardPlaceholder.svelte";
+    import ToolGridPlaceholder from "$lib/components/home/ToolGridPlaceholder.svelte";
+</script>
+
 <svelte:head><title>DeenLab</title></svelte:head>
 
-<div class="app-shell">
-    <main class="page-container">
-        <header class="app-header">
-            <div class="text-4xl font-bold">DeenLab</div>
-            <div class="mt-2 text-zinc-400">Front-end rebuild in progress.</div>
-        </header>
+<!-- design: layout is static (greeting, then the card, then the grid) -- only the pieces inside each slot are meant to be dynamic -->
+<div class="space-y-6">
+    <div>
+        <h1 class="text-2xl font-bold">Assalamu Alaikum!</h1>
+        <p class="mt-1 text-zinc-400">May your Salah bring you peace and success.</p>
+    </div>
 
-        <p class="text-zinc-400">
-            See <code>docs/legacy-frontend.md</code> for the previous implementation
-            (moved to <code>src/discarded/</code>) and <code>docs/backend-api.md</code>
-            for what the Rust backend exposes.
-        </p>
-    </main>
+    <PrayerCardPlaceholder />
+
+    <ToolGridPlaceholder />
 </div>
