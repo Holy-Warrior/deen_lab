@@ -81,11 +81,12 @@ async fn build_feature(prompt: String) -> Result<FeatureBuildResult, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .setup(|app| {
+        .setup(|_app| {
+            // rust: _app is only used inside this cfg-gated block -- the underscore
+            // prefix keeps desktop builds (where the block compiles out) warning-free
             #[cfg(target_os = "android")]
             {
-                // use tauri::Manager;
-                app.handle().plugin(tauri_plugin_geolocation::init())?;
+                _app.handle().plugin(tauri_plugin_geolocation::init())?;
             }
             Ok(())
         })
