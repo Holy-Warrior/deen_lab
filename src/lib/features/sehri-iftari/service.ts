@@ -1,4 +1,5 @@
 import { loadCacheThenNetwork } from "$lib/services/apiCache";
+import type { Coordinates } from "$lib/services/location";
 
 export interface FastingDay { date: Date; weekday: string; hijri: string; imsak: string; fajr: string; maghrib: string; }
 
@@ -26,13 +27,18 @@ export class SehriIftariService {
     // (docs/backend-api.md) instead of a raw fetch() -- onCached paints instantly from
     // disk if this exact URL was cached before, then the real network request always
     // still runs too and its result (or error) is what this method resolves/rejects with
+    //
+    // design: coordinates instead of city/country strings -- Aladhan's coordinate-based
+    // `calendar` endpoint mirrors `calendarByCity`, and taking coordinates directly means
+    // this can be driven by DeviceLocation the same way Qibla is, with no separate manual
+    // city/country form (DeviceLocation already has its own manual-city fallback built in).
     async month(
-        city: string, country: string, method: string, date: Date,
+        coordinates: Coordinates, method: string, date: Date,
         onCached: (days: FastingDay[]) => void
     ): Promise<FastingDay[]> {
-        const url = new URL(`https://api.aladhan.com/v1/calendarByCity/${date.getFullYear()}/${date.getMonth() + 1}`);
-        url.searchParams.set("city", city);
-        url.searchParams.set("country", country);
+        const url = new URL(`https://api.aladhan.com/v1/calendar/${date.getFullYear()}/${date.getMonth() + 1}`);
+        url.searchParams.set("latitude", coordinates.latitude.toFixed(4));
+        url.searchParams.set("longitude", coordinates.longitude.toFixed(4));
         url.searchParams.set("method", method);
 
         return loadCacheThenNetwork(url.toString(), parseMonth, onCached);

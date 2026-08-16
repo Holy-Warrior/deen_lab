@@ -22,7 +22,15 @@
     // svelte: fallback is a City (not just Coordinates) so this component can build the
     // "Sydney, Australia"-style label itself -- every caller needs that same string, so it
     // isn't left for each feature to reimplement.
-    let { fallback, children }: { fallback: City; children: Snippet<[ChildProps]> } = $props();
+    //
+    // onCoordinatesChange is optional, for consumers that need to *react* to a new position
+    // (e.g. re-fetching a monthly calendar) rather than just reading it during their own
+    // render. It's called from refresh()/selectCity() below -- plain script functions, not
+    // template expressions -- because Svelte 5 forbids mutating $state from inside a snippet's
+    // rendered output (the {@render children(...)} call is still just read-only rendering).
+    let {
+        fallback, children, onCoordinatesChange
+    }: { fallback: City; children: Snippet<[ChildProps]>; onCoordinatesChange?: (coordinates: Coordinates) => void } = $props();
 
     // svelte: `untrack` marks this as "read fallback once, for the initial value only" --
     // without it, Svelte warns that $state(fallback) looks like it should stay in sync with the
@@ -97,6 +105,7 @@
             coordinates = resolvedCoordinates;
             isLive = true;
             permissionRetryAttempted = false;
+            onCoordinatesChange?.(coordinates);
             // shown while the reverse-geocode lookup below is in flight, and kept as-is if it
             // fails -- the coordinates are live and correct either way, only the friendly name
             // is best-effort
@@ -114,6 +123,7 @@
             coordinates = fallback;
             locationName = `${fallback.name}, ${fallback.country}`;
             isLive = false;
+            onCoordinatesChange?.(coordinates);
 
             if (cause instanceof LocationServicesDisabledError) {
                 failureKind = "servicesDisabled";
@@ -168,6 +178,7 @@
         isLive = false;
         failureKind = null;
         failureMessage = "";
+        onCoordinatesChange?.(coordinates);
     }
 </script>
 

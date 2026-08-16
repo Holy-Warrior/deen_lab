@@ -13,5 +13,5 @@
 
 :root {
     /* -- features: shared tokens for feature pages (Qibla, Sehri & Iftari, ...) -- */
-    --config-features-header-gap: 0.5rem;
+    --config-features-header-gap: 0.1rem;
 }

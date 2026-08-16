@@ -256,3 +256,32 @@ button, input { font: inherit; }
     padding: 1rem;
     box-shadow: 0 20px 40px -20px rgb(0 0 0 / 0.6);
 }
+
+/* svelte: styling for bits-ui's Tabs.List/Trigger lives here (global), not in a feature's own
+   scoped <style> -- a component's scoped-CSS hash only ever lands on elements it renders
+   directly, never inside a child component like Tabs.Trigger, so a scoped rule targeting it
+   would silently never match. Same reason .popover-panel above is global instead of scoped. */
+/* design: display:flex (a block-level box), not inline-flex -- inline-level boxes ignore
+   margin:auto centering, so it has to be block-level for width:fit-content + margin-inline:auto
+   to actually center the pill in its container */
+.view-tabs {
+    display: flex;
+    width: fit-content;
+    margin-inline: auto;
+    gap: 0.375rem;
+    padding: 0.375rem;
+    border-radius: 1rem;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+}
+
+.view-tabs__trigger {
+    padding: 0.75rem 1.75rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--app-muted);
+    cursor: pointer;
+}
+
+.view-tabs__trigger[data-state="active"] { background: var(--app-accent-strong); color: #022c22; }
