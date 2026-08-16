@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./lib/config/theme.css";
 
 :root {
     color-scheme: dark;
@@ -16,6 +17,7 @@
     /* tailwind: CSS custom properties read by both plain CSS below and Tailwind arbitrary values like h-[var(--app-topbar-height)] */
     --app-topbar-height: 3.75rem;
     --app-bottomnav-height: 4.5rem;
+    --app-shell-content-gap: 1.5rem;
 }
 
 * { box-sizing: border-box; }
@@ -104,6 +106,27 @@ button, input { font: inherit; }
     font-size: 0.875rem;
 }
 
+/* design: borderless companion to .error-banner -- an always-visible ongoing-status row
+   (e.g. "which location is this?"), not a failure needing attention. See DeviceLocation.svelte. */
+.location-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block: 0.25rem;
+    color: var(--app-muted);
+    font-size: 0.875rem;
+}
+
+/* design: a reusable "sync status" affordance, not specific to location -- the icon button's
+   color is the at-a-glance signal: grey (loading, or disabled/nothing to sync), red (inactive,
+   showing a fallback rather than the real synced value), green (active, live and synced).
+   data-status is set from whatever state the button's own onclick action would resolve into. */
+.status-icon-button[data-status="loading"],
+.status-icon-button[data-status="unavailable"] { color: var(--app-muted); }
+.status-icon-button[data-status="inactive"] { color: #f87171; }
+.status-icon-button[data-status="active"] { color: var(--app-accent-strong); }
+
 /* ==== app shell (top bar / bottom nav / drawer / popover) ==== */
 
 /* tailwind: fixed + grid-cols-[1fr_auto_1fr] centers the title regardless of the two buttons' widths */
@@ -145,9 +168,17 @@ button, input { font: inherit; }
 .shell-main {
     min-height: 100vh;
     padding-block:
-        calc(var(--app-topbar-height) + env(safe-area-inset-top, 0px) + 1.5rem)
-        calc(var(--app-bottomnav-height) + env(safe-area-inset-bottom, 0px) + 1.5rem);
+        calc(var(--app-topbar-height) + env(safe-area-inset-top, 0px) + var(--app-shell-content-gap))
+        calc(var(--app-bottomnav-height) + env(safe-area-inset-bottom, 0px) + var(--app-shell-content-gap));
     overflow-y: auto;
+}
+
+/* design: feature pages (Qibla, Sehri & Iftari, ...) sit closer to the top bar than the
+   shell's default content gap -- pulling the page up by the difference means the visible
+   gap above the header always equals --config-features-header-gap, however the shell's own
+   default gap is configured, without every feature page hardcoding a negative margin itself */
+.feature-page {
+    margin-block-start: calc(var(--config-features-header-gap) - var(--app-shell-content-gap));
 }
 
 .icon-button {
@@ -162,7 +193,8 @@ button, input { font: inherit; }
     cursor: pointer;
 }
 
-.icon-button:hover { background: var(--app-surface-hover); }
+.icon-button:hover:not(:disabled) { background: var(--app-surface-hover); }
+.icon-button:disabled { cursor: not-allowed; opacity: 0.6; }
 
 .nav-tab {
     display: flex;

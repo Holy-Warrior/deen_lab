@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, untrack, type Snippet } from "svelte";
     import {
-        currentCoordinates, type Coordinates,
+        currentCoordinates, placeName, type Coordinates, type LocationStatus,
         LocationServicesDisabledError, LocationPermissionDeniedError, LocationUnavailableError
     } from "$lib/services/location";
     import { openLocationSettings, openAppSettings, showToast } from "$lib/services/deviceSettings";
@@ -15,6 +15,7 @@
         coordinates: Coordinates;
         locationName: string;
         isLoading: boolean;
+        status: LocationStatus;
         refresh: () => void;
     }
 
@@ -31,6 +32,17 @@
     let failureKind: FailureKind = $state(null);
     let failureMessage = $state("");
     let isLoading = $state(true);
+
+    // design: true only right after a successful currentCoordinates() resolution -- false for
+    // the fallback, a manually picked city, or any failure, since none of those are the
+    // device's real, currently-synced position. Drives the status-icon-button color.
+    let isLive = $state(false);
+
+    let status: LocationStatus = $derived(
+        isLoading ? "loading" :
+        failureKind === "unavailable" ? "unavailable" :
+        isLive ? "active" : "inactive"
+    );
 
     // design: Android stops showing its own permission dialog after a prior denial -- calling
     // requestPermissions() again just silently returns denied with no UI at all. This tracks
@@ -66,19 +78,42 @@
         return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
     });
 
+    // design: refresh() can overlap itself -- a slow reverse-geocode lookup from an earlier
+    // call could otherwise resolve after a newer refresh() has already moved on, flipping the
+    // displayed name back to something stale. Each call captures its own token and checks it's
+    // still the current one before touching state that a newer call may have already replaced.
+    let requestToken = 0;
+
     async function refresh() {
+        const token = ++requestToken;
         isLoading = true;
         failureKind = null;
         failureMessage = "";
 
         try {
-            coordinates = await currentCoordinates();
-            locationName = "Your current location";
+            const resolvedCoordinates = await currentCoordinates();
+            if (token !== requestToken) return;
+
+            coordinates = resolvedCoordinates;
+            isLive = true;
             permissionRetryAttempted = false;
+            // shown while the reverse-geocode lookup below is in flight, and kept as-is if it
+            // fails -- the coordinates are live and correct either way, only the friendly name
+            // is best-effort
+            locationName = "Your current location";
+            try {
+                const resolved = await placeName(coordinates, name => { if (token === requestToken) locationName = name; });
+                if (token === requestToken) locationName = resolved;
+            } catch {
+                // no-op: keep the "Your current location" fallback text set above
+            }
         } catch (cause) {
+            if (token !== requestToken) return;
+
             // design: fall back to the given location either way, then branch on *why* it failed
             coordinates = fallback;
             locationName = `${fallback.name}, ${fallback.country}`;
+            isLive = false;
 
             if (cause instanceof LocationServicesDisabledError) {
                 failureKind = "servicesDisabled";
@@ -99,7 +134,7 @@
                 permissionRetryAttempted = false;
             }
         } finally {
-            isLoading = false;
+            if (token === requestToken) isLoading = false;
         }
     }
 
@@ -130,6 +165,7 @@
     function selectCity(city: City) {
         coordinates = city;
         locationName = `${city.name}, ${city.country}`;
+        isLive = false;
         failureKind = null;
         failureMessage = "";
     }
@@ -139,7 +175,7 @@
     <ErrorBanner message={failureMessage} onRetry={showRetry ? retry : undefined} {retryLabel} />
 {/if}
 
-{@render children({ coordinates, locationName, isLoading, refresh })}
+{@render children({ coordinates, locationName, isLoading, status, refresh })}
 
 {#if showCitySelector}
     <section class="surface mx-auto max-w-xl p-5">

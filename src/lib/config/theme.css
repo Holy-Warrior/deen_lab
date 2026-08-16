@@ -1,0 +1,17 @@
+/*
+ * Front-end config: design tokens grouped by category.
+ *
+ * tailwind: v4 has no tailwind.config.js -- these CSS custom properties ARE the
+ * config, read by plain CSS (app.css) and by Tailwind's arbitrary-value syntax
+ * (e.g. class="mt-[var(--config-features-header-gap)]"). Pure CSS, resolved by
+ * the browser's own cascade -- no JS object to import/read on every render, so
+ * this is the zero-runtime-cost option compared to a TS config module.
+ *
+ * Add new tokens under the category they belong to; start a new category
+ * comment block for anything that doesn't fit an existing one.
+ */
+
+:root {
+    /* -- features: shared tokens for feature pages (Qibla, Sehri & Iftari, ...) -- */
+    --config-features-header-gap: 0.5rem;
+}
