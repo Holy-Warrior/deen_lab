@@ -87,6 +87,9 @@ never a substitute for the real request. If the network call fails, the promise 
 that error; the caller decides whether to keep showing the already-delivered cached data
 alongside it. First real consumer:
 [`src/lib/features/sehri-iftari/service.ts`](../src/lib/features/sehri-iftari/service.ts).
+Also used for reverse geocoding (turning GPS coordinates into a place name) against OpenStreetMap's
+Nominatim API — see [`src/lib/services/location.ts`](../src/lib/services/location.ts)'s
+`placeName()` — proof this pair of commands works for any HTTP API, not just Aladhan.
 
 ---
 
@@ -185,6 +188,46 @@ package.name>"` field, or `tauri_plugin::Builder::try_build()` panics in `build.
 `package.links field in the Cargo manifest is not set`. Not needed for anything else here
 (no native/non-Kotlin build artifacts), but the build script requires it regardless.
 
+### `tauri-plugin-compass` (Android only, local/unpublished)
+
+Source: [`src-tauri/plugins/compass/`](../src-tauri/plugins/compass/)
+
+Streams live device-heading updates for Qibla's rotating compass. Built the same way as
+`device-settings` above, but for a genuinely different problem: a single request/response
+`invoke()` can't deliver a continuous stream of sensor readings, so this mirrors the
+already-installed `tauri-plugin-geolocation`'s `watchPosition` pattern instead — a
+`tauri::ipc::Channel` passed as an invoke argument, held onto by the Kotlin side, which calls
+`channel.send(...)` every time a new reading comes in.
+
+```ts
+import { startCompass } from "$lib/services/compass";
+
+const { mode, stop } = await startCompass(heading => {
+  // heading: { degrees: number, absolute: boolean }, called repeatedly until stop()
+});
+// mode: "sensor" | "gyroscope" | "none"
+```
+
+Two commands: `start` (registers sensor listeners, begins streaming, resolves with which mode
+is actually available) and `stop` (unregisters listeners). No runtime permission needed —
+`TYPE_ACCELEROMETER`/`TYPE_MAGNETIC_FIELD`/`TYPE_GYROSCOPE` are "normal" motion sensors, not the
+`BODY_SENSORS` permission group.
+
+Sensor fallback chain, decided once per `start()` call:
+
+- **`"sensor"`** — `TYPE_ACCELEROMETER` + `TYPE_MAGNETIC_FIELD` fused via
+  `SensorManager.getRotationMatrix`/`getOrientation`, the standard Android recipe for a real,
+  north-anchored compass heading.
+- **`"gyroscope"`** — no magnetometer, so `TYPE_GYROSCOPE`'s angular velocity is integrated over
+  time into a heading that starts at 0 when `start()` is called. Accurate for *relative*
+  rotation (how far the phone has turned since then), but not anchored to true north; the
+  frontend seeds its initial needle angle from the GPS-computed bearing either way, so this
+  degrades gracefully rather than pointing somewhere arbitrary.
+- **`"none"`** — neither sensor exists; the caller falls back to a static (non-rotating) bearing
+  display. See `QiblaPage.svelte`'s inline caveat text for each of these modes (never a popup).
+
+Permissions granted in `capabilities/mobile.json`: `compass:allow-start`, `compass:allow-stop`.
+
 ---
 
 ## 3. Capabilities: `default.json` vs `mobile.json`
@@ -194,11 +237,13 @@ Two capability files, both applying to the `"main"` window:
 - [`capabilities/default.json`](../src-tauri/capabilities/default.json) — `core:default`,
   `opener:default`. No `"platforms"` field, so it applies to **every** build target.
 - [`capabilities/mobile.json`](../src-tauri/capabilities/mobile.json) — every
-  `geolocation:*` and `device-settings:*` permission, scoped with `"platforms": ["android"]`.
+  `geolocation:*`, `device-settings:*`, and `compass:*` permission, scoped with
+  `"platforms": ["android"]`.
 
-They're split because a desktop build never depends on `tauri-plugin-geolocation` or
-`tauri-plugin-device-settings` at all (see the `Cargo.toml` target-gating above), so those
-permission identifiers **don't exist** in the desktop build's schema. Requesting them
+They're split because a desktop build never depends on `tauri-plugin-geolocation`,
+`tauri-plugin-device-settings`, or `tauri-plugin-compass` at all (see the `Cargo.toml`
+target-gating above), so those permission identifiers **don't exist** in the desktop build's
+schema. Requesting them
 unconditionally from one shared capability file broke every desktop `cargo run`/`tauri dev`
 with `Permission geolocation:allow-check-permissions not found, expected one of core:default,
 ...` — confirmed by diffing `gen/schemas/desktop-schema.json` (no `geolocation:*` entries at
