@@ -36,3 +36,4 @@ strip = true
 [target.'cfg(target_os = "android")'.dependencies]
 tauri-plugin-geolocation = "2.3.2"
 tauri-plugin-device-settings = { path = "plugins/device-settings" }
+tauri-plugin-compass = { path = "plugins/compass" }
