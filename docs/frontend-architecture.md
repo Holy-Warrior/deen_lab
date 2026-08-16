@@ -76,6 +76,16 @@ never actually worked there: icons are real `@lucide/svelte` components now inst
 unrendered name strings, and there's no unused `Backend`/`MockBackend`-style abstraction sitting
 next to it.
 
+**The Library tab has its own, identically-shaped registry** — `src/lib/library/discover.ts`
+globs `$lib/features/**/library.ts` (not `tool.ts`) and `LibraryGrid.svelte`
+(`src/lib/components/library/`) renders it the same way `ToolGrid` does. A feature drops a
+`library.ts` file to appear in Library, a `tool.ts` file to appear on Home, both, or neither —
+whichever fits what the feature actually is. Quick, time-sensitive actions (Qibla, Sehri &
+Iftari) register `tool.ts`; reference/reading content (Duas, Quran) registers `library.ts`. Both
+marker files export the same `ToolDefinition` shape from `$lib/tools/types`, reused rather than
+duplicated since Library entries need nothing extra beyond `{ id, name, description?, icon,
+route }`.
+
 ## Shared conventions every feature follows
 
 **Error display** — a single convention, applied consistently: a dismissible-by-resolution
@@ -100,6 +110,13 @@ expression (e.g. `CitySelector.svelte`'s search filter).
 **Route files are thin** — `src/routes/<name>/+page.svelte` just imports and renders
 `src/lib/features/<name>/<Name>Page.svelte`. All the actual logic lives in the feature folder
 under `lib/`, not in `routes/`.
+
+**In-page drill-down state (list → detail inside one route) needs to opt in to the hardware back
+button, or it exits the feature instead of stepping back one screen** — see
+[`android-back-navigation.md`](./android-back-navigation.md) for why (Tauri's Android WebView
+maps the back button to browser-style history, which plain `$state` never populates) and the
+fix (SvelteKit shallow routing, `pushState`/`page.state`, not a hand-rolled `popstate`
+listener). `DuasPage.svelte` is the reference implementation.
 
 **Styling a bits-ui child component needs global CSS, not a scoped `<style>` block** — a
 component's scoped-CSS hash class only ever lands on elements that component renders directly;
@@ -228,3 +245,64 @@ layout, but with the one time slot that's actually relevant right now — `.toda
 `.today-slot--upcoming` (outlined only, "next up but not here yet," e.g. Iftar while still
 fasting) — visually distinct from the other two, plus a live `HH:MM:SS` countdown (ticking every
 second, not every 30, specifically so the seconds digit moves and it reads as "live").
+
+## Reference feature: Duas
+
+`src/lib/features/duas/service.ts` calls UmmahAPI's `/api/duas/categories` and
+`/api/duas/category/{id}` endpoints through `loadCacheThenNetwork`, the same cache-then-network
+pattern as Sehri & Iftari. Registers only `library.ts` (no `tool.ts`) — a browse-and-read
+feature, not a quick daily-glance one, so it belongs in Library, not Home.
+
+`DuasPage.svelte` is a two-level drill-down (categories → duas-in-category → dua detail) inside
+one route, using the shallow-routing pattern from `android-back-navigation.md` so the hardware
+back button steps back one screen at a time. Category tiles reuse `.tool-card` (the same class
+Home's `ToolGrid` uses) for visual consistency between an actual tool tile and a plain clickable
+card. Two real bugs worth remembering if this pattern comes up again elsewhere:
+
+- **`let x: T | null = $state(null)` (type annotation on the `let`) mis-narrows to `never`** in
+  svelte-check at every later `x ? x.prop : ...`/`x?.prop` read — a reproducible tooling quirk,
+  not a real type error. `let x = $state<T | null>(null)` (generic on `$state` itself) avoids it.
+  Applies project-wide, not just to Duas.
+- **`line-clamp-N` combined with Tailwind's `block` utility on the same element silently loses
+  its clamp** — both set `display`, and `block` (whichever comes later in the generated
+  stylesheet) wins over `line-clamp`'s own `display: -webkit-box`. Don't pair them.
+
+## Reference feature: Quran
+
+`src/lib/features/quran/service.ts` calls UmmahAPI's `/quran/surahs` and `/quran/surah/{n}`
+endpoints — the latter returns Arabic text, transliteration, and a `translations` dict keyed by
+translator per verse; this app picks `sahih_international` as the one English translation shown,
+always alongside the transliteration, rather than adding a translation picker. `QuranPage.svelte`
+is a single-level drill-down (surah list → verse-by-verse reading view), same shallow-routing
+back-button pattern as Duas. Registers only `library.ts`, same reasoning as Duas.
+
+**A Mushaf (page-accurate Arabic-only) reading mode was built, tested, and then deliberately
+reverted** — not because it doesn't work, but because it took much longer to get right than the
+task warranted, and the decision on which rendering approach to ship long-term wasn't settled.
+Two approaches were built and are **not** in this codebase, kept only as external reference
+material (a compressed PDF + a link to the font/data source, on the project owner's own machine,
+outside the repo) in case either is picked back up:
+
+- **QCF (Quran Complex Font)** — King Fahd Quran Complex's own per-page fonts + page-layout JSON
+  ([MohamadHajjRabee/quran-qcf4](https://github.com/MohamadHajjRabee/quran-qcf4)), rendering each
+  Mushaf page as real vector text (glyphs positioned to reproduce the exact printed line-breaks)
+  rather than an image. Real body pages always have exactly 15 lines (confirmed against the page
+  data itself — only the opening two pages have fewer). Small per-page payloads (a font is ~1MB,
+  a page's JSON layout ~10-30KB), sharp at any zoom, but the font files are licensed "for
+  Quranic rendering purposes" only — not for redistribution — so they'd need to be fetched live
+  from the source per device, never vendored into this repo.
+- **A scanned PDF** (a real, compressed ~57MB Uthmani Mushaf scan) rendered page-by-page via
+  `pdfjs-dist`. Two real bugs were found and fixed before it was reverted, worth knowing if a
+  similar pinch-zoom-on-a-fixed-frame UI is ever built again: (1) applying a zoom/pan action to
+  the *same* element that has `overflow: hidden` scales the clip boundary right along with the
+  content, so a zoomed-in view spills out over the surrounding UI instead of staying cropped —
+  the transformed layer and the clipping viewport need to be two separate nested elements; (2)
+  `pdfjs-dist`'s default chunked/Range-request PDF loading fails outright (`"Failed to fetch"`,
+  no further detail surfaced to JS) when proxied through Tauri Android's dev-mode
+  `http://tauri.localhost` asset layer, which doesn't forward HTTP Range semantics the way
+  pdf.js's probe request expects — `disableRange`/`disableStream` in `pdfjs-dist`'s
+  `DocumentInitParameters` forces one plain whole-file GET instead, sidestepping it.
+
+Anyone picking this back up should start from the QCF link above, not the PDF — it's the better
+long-term fit (smaller, sharper, no licensing question about vendoring), the PDF route was only
+ever a "get something working today" compromise.

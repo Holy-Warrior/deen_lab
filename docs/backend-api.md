@@ -36,6 +36,7 @@ interface FeatureBuildResult {
 ```
 
 Errors (rejected `Promise`, string message) when:
+
 - `prompt` is empty/whitespace.
 - `groq_config::API_KEY` is empty — i.e. `src-tauri/src/groq_config.rs` hasn't been created
   from [`groq_config.example.rs`](../src-tauri/src/groq_config.example.rs) with a real key.
@@ -89,7 +90,10 @@ alongside it. First real consumer:
 [`src/lib/features/sehri-iftari/service.ts`](../src/lib/features/sehri-iftari/service.ts).
 Also used for reverse geocoding (turning GPS coordinates into a place name) against OpenStreetMap's
 Nominatim API — see [`src/lib/services/location.ts`](../src/lib/services/location.ts)'s
-`placeName()` — proof this pair of commands works for any HTTP API, not just Aladhan.
+`placeName()` — and for Duas and Quran, both against UmmahAPI
+([`duas/service.ts`](../src/lib/features/duas/service.ts),
+[`quran/service.ts`](../src/lib/features/quran/service.ts)) — proof this pair of commands works
+for any HTTP API, not just Aladhan.
 
 ---
 
