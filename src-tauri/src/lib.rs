@@ -87,6 +87,7 @@ pub fn run() {
             #[cfg(target_os = "android")]
             {
                 _app.handle().plugin(tauri_plugin_geolocation::init())?;
+                _app.handle().plugin(tauri_plugin_device_settings::init())?;
             }
             Ok(())
         })

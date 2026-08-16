@@ -1,18 +1,18 @@
 # Backend API Reference
 
-What the Rust side (`src-tauri/`) currently exposes to the SvelteKit front-end, and what
-platform capabilities are installed but not yet wired into any Rust command. Written so the
-next front-end pass knows what it can call without re-reading the Rust source.
+What the Rust side (`src-tauri/`) exposes to the SvelteKit front-end: built-in commands, the
+custom local plugin, and the installed platform plugins. Written so a front-end change knows
+what it can call without re-reading the Rust/Kotlin source.
 
 Two ways to reach native functionality from TypeScript:
 
-1. **Tauri commands** — Rust functions in `src-tauri/src/*.rs`, registered in
-   `invoke_handler![...]` in [`lib.rs`](../src-tauri/src/lib.rs), called from the front-end with
-   `invoke("command_name", { ...args })` from `@tauri-apps/api/core`.
+1. **Tauri commands** — Rust functions registered in `invoke_handler![...]`, called from the
+   front-end with `invoke("command_name", { ...args })` from `@tauri-apps/api/core`. Commands
+   that belong to a *plugin* (rather than the main app crate) are namespaced
+   `invoke("plugin:<name>|<command>")`.
 2. **Plugin JS APIs** — installed Tauri plugins that ship their own `@tauri-apps/plugin-*`
-   package and can be called directly from TypeScript without a hand-written Rust command,
-   as long as the plugin is registered on the Rust side and the required permissions are
-   granted in `src-tauri/capabilities/default.json`.
+   npm package and can be called directly from TypeScript, as long as the plugin is registered
+   on the Rust side and the required permissions are granted in a capability file.
 
 ---
 
@@ -79,17 +79,14 @@ if nothing has been cached yet, or if the cache entry on disk was corrupt (and s
 the corrupt file in that case) — so the front-end can treat "no cache" as a normal state, not
 an error.
 
-**Intended pattern** (not yet used anywhere in the front-end): call `get_cached_response(url)`
-first to paint instantly with whatever's on disk, then call `api_request(url, ..., cache: true)`
-in the background to refresh it. If `api_request` fails (offline, server down), the UI already
-has the cached data and is unaffected.
-
-> Every feature currently in the codebase (Quran, prayer times, duas, hadith, sehri/iftari)
-> calls `fetch()` directly from the browser instead of going through `api_request` /
-> `get_cached_response`. That means none of them get disk caching or offline fallback, and on
-> Android they're subject to whatever WebView networking/CORS behavior applies instead of a
-> native HTTP client. Routing these through the two commands above is the main reason this
-> doc exists.
+**Stale-while-revalidate pattern** — implemented once, reusably, in
+[`src/lib/services/apiCache.ts`](../src/lib/services/apiCache.ts)'s `loadCacheThenNetwork()`:
+call `get_cached_response(url)` first to paint instantly with whatever's on disk (if anything),
+then **always** still call `api_request(url, ..., cache: true)` — the cache is a head start,
+never a substitute for the real request. If the network call fails, the promise rejects with
+that error; the caller decides whether to keep showing the already-delivered cached data
+alongside it. First real consumer:
+[`src/lib/features/sehri-iftari/service.ts`](../src/lib/features/sehri-iftari/service.ts).
 
 ---
 
@@ -99,52 +96,132 @@ has the cached data and is unaffected.
 
 Registered unconditionally in `.plugin(tauri_plugin_opener::init())`. Exposes
 `@tauri-apps/plugin-opener` on the front-end (`openUrl`, `openPath`, `revealItemInDir`, etc.)
-without any custom Rust command needed. Permission granted: `opener:default`. Not currently
-imported anywhere in the front-end.
+without any custom Rust command needed. Permission granted: `opener:default` in
+`capabilities/default.json`. Not currently imported anywhere in the front-end.
 
 ### `tauri-plugin-geolocation` (Android only)
 
-Registered only under `#[cfg(target_os = "android")]` in `lib.rs`'s `setup()`:
-`app.handle().plugin(tauri_plugin_geolocation::init())?`. Declared as an
+Registered only under `#[cfg(target_os = "android")]` in `lib.rs`'s `setup()`. Declared as an
 `[target.'cfg(target_os = "android")'.dependencies]` entry in `Cargo.toml`, so it does not
-build into the desktop binary at all — only test/ship this on an Android target or emulator.
+build into the desktop binary at all — only test/ship this on an Android target.
 
-Front-end package `@tauri-apps/plugin-geolocation` is **not yet installed** in `package.json`;
-add it before calling any of the JS API below.
-
-Permissions already granted in
-[`src-tauri/capabilities/default.json`](../src-tauri/capabilities/default.json):
-`geolocation:allow-check-permissions`, `geolocation:allow-request-permissions`,
-`geolocation:allow-get-current-position`.
-
-Expected JS surface once the plugin package is added (from `@tauri-apps/plugin-geolocation`):
+Front-end package `@tauri-apps/plugin-geolocation` is installed. JS surface used:
 
 ```ts
 import { checkPermissions, requestPermissions, getCurrentPosition } from "@tauri-apps/plugin-geolocation";
 
-const permissions = await checkPermissions();          // "granted" | "denied" | "prompt" | ...
+const permissions = await checkPermissions();          // { location: PermissionState, coarseLocation: PermissionState }
 if (permissions.location !== "granted")
   await requestPermissions(["location"]);
 
 const position = await getCurrentPosition(); // { coords: { latitude, longitude, ... }, timestamp }
 ```
 
-> The current Qibla feature (`src/lib/features/qibla/service.ts`, pre-move) calls the browser's
-> `navigator.geolocation.getCurrentPosition` directly instead of this plugin. On Android inside
-> a Tauri WebView, the browser geolocation API may not be backed by the OS location stack the
-> way the native plugin is, and it bypasses the Tauri permission model declared in
-> `capabilities/default.json`. Any Qibla/location-based rebuild should go through
-> `tauri-plugin-geolocation` instead.
+**Rejection strings to match on**, confirmed by reading the plugin's own Android source
+(`tauri-plugin-geolocation-2.3.2/android/src/main/java/{Geolocation,GeolocationPlugin}.kt` in
+the local Cargo registry cache) rather than guessing:
+
+- `"Location disabled."` / `"Location services are disabled."` — the OS Location toggle is off.
+  `checkPermissions`/`requestPermissions` check this *before* the permission state itself, so
+  this is usually what you see first, not a generic permission error.
+- `"Google Play Services unavailable."` — device has no working fused location provider.
+- Anything else — genuine permission denial (`location !== "granted"` after requesting) or an
+  unclassified failure.
+
+Reference implementation of classifying these into typed errors:
+[`src/lib/features/qibla/service.ts`](../src/lib/features/qibla/service.ts) (`classify()`,
+`LocationServicesDisabledError` / `LocationPermissionDeniedError` / `LocationUnavailableError`).
+`QiblaPage.svelte` shows the corresponding UI pattern for each: settings-redirect banner,
+grant-permission banner (escalating to app settings after one failed re-prompt — see the
+`device-settings` plugin below), and a manual city-picker fallback.
+
+Permissions granted in
+[`src-tauri/capabilities/mobile.json`](../src-tauri/capabilities/mobile.json):
+`geolocation:allow-check-permissions`, `geolocation:allow-request-permissions`,
+`geolocation:allow-get-current-position`.
+
+### `tauri-plugin-device-settings` (Android only, local/unpublished)
+
+Source: [`src-tauri/plugins/device-settings/`](../src-tauri/plugins/device-settings/)
+
+A small custom plugin, hand-written (mirroring `tauri-plugin-geolocation`'s own structure)
+because no installed or published plugin exposes a way to open native Android settings
+screens or show a system Toast. Android-only: depended on from `Cargo.toml` under
+`[target.'cfg(target_os = "android")'.dependencies]`, so — like geolocation — it doesn't exist
+in the desktop build at all.
+
+No generated JS package (`--no-api`-style, hand-written invoke calls instead, same convention
+as the main app's own commands); wrappers live in
+[`src/lib/services/deviceSettings.ts`](../src/lib/services/deviceSettings.ts):
+
+```ts
+import { openLocationSettings, openAppSettings, showToast } from "$lib/services/deviceSettings";
+
+await openLocationSettings();      // Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
+await openAppSettings();           // Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS) for this app
+await showToast("some message");   // native Android Toast, LENGTH_LONG
+```
+
+Commands (all resolve `void`, all Android-only):
+
+- `open_location_settings` — jumps to the OS Location Settings screen. Used when
+  `LocationServicesDisabledError` is caught (see Qibla above).
+- `open_app_settings` — jumps to *this app's* own "App info" screen. Android stops showing its
+  own permission-request dialog after a prior denial (silently returns denied, no UI at all on
+  subsequent `requestPermissions()` calls) — this is the only remaining way for the user to
+  grant it manually. `QiblaPage.svelte` escalates to this only after one automatic re-prompt
+  attempt has already proven not to show anything.
+- `show_toast(message: string)` — a native Toast, shown via `activity.runOnUiThread { ... }`
+  since plugin commands don't run on the UI thread by default. Used right before
+  `open_app_settings()` so the settings redirect doesn't feel unexplained.
+
+Permissions (auto-generated per command by the plugin's own `build.rs` into
+`permissions/autogenerated/commands/*.toml` — never hand-write these) granted in
+`capabilities/mobile.json`: `device-settings:allow-open-location-settings`,
+`device-settings:allow-open-app-settings`, `device-settings:allow-show-toast`.
+
+**Gotcha already hit once**: the plugin's `Cargo.toml` `[package]` needs a `links = "<same as
+package.name>"` field, or `tauri_plugin::Builder::try_build()` panics in `build.rs` with
+`package.links field in the Cargo manifest is not set`. Not needed for anything else here
+(no native/non-Kotlin build artifacts), but the build script requires it regardless.
 
 ---
 
-## 3. Adding a new command or plugin
+## 3. Capabilities: `default.json` vs `mobile.json`
 
-- New Rust commands: add the `#[tauri::command]` function (own module if it's more than a
-  handful of lines, following `api_cache.rs`'s pattern), then list it in
+Two capability files, both applying to the `"main"` window:
+
+- [`capabilities/default.json`](../src-tauri/capabilities/default.json) — `core:default`,
+  `opener:default`. No `"platforms"` field, so it applies to **every** build target.
+- [`capabilities/mobile.json`](../src-tauri/capabilities/mobile.json) — every
+  `geolocation:*` and `device-settings:*` permission, scoped with `"platforms": ["android"]`.
+
+They're split because a desktop build never depends on `tauri-plugin-geolocation` or
+`tauri-plugin-device-settings` at all (see the `Cargo.toml` target-gating above), so those
+permission identifiers **don't exist** in the desktop build's schema. Requesting them
+unconditionally from one shared capability file broke every desktop `cargo run`/`tauri dev`
+with `Permission geolocation:allow-check-permissions not found, expected one of core:default,
+...` — confirmed by diffing `gen/schemas/desktop-schema.json` (no `geolocation:*` entries at
+all) against `gen/schemas/android-schema.json` (has them). Any future Android-only plugin
+permission goes in `mobile.json`, not `default.json`.
+
+---
+
+## 4. Adding a new command or plugin
+
+- New Rust commands on the main app crate: add the `#[tauri::command]` function (own module if
+  it's more than a handful of lines, following `api_cache.rs`'s pattern), then list it in
   `tauri::generate_handler![...]` in `lib.rs`.
-- New plugins: add the dependency to `Cargo.toml` (guard with
+- New **platform-specific native functionality** (anything needing real Kotlin/Swift, not just
+  a Rust HTTP call): a local plugin crate under `src-tauri/plugins/<name>/`, following
+  `device-settings`'s structure as the template — `tauri plugin new <name> --android
+  --no-example --no-api -d src-tauri/plugins` scaffolds this correctly if you have a real
+  interactive terminal available; otherwise copy the structure of an already-installed plugin
+  from the local Cargo registry cache (`~/.cargo/registry/src/.../tauri-plugin-<name>-<ver>/`)
+  as a proven reference rather than guessing at the Rust↔Kotlin wiring.
+- New installed plugins: add the dependency to `Cargo.toml` (guard with
   `[target.'cfg(target_os = "...")'.dependencies]` if platform-specific), register with
-  `.plugin(...)` in `lib.rs`, add the required permission identifiers to
-  `src-tauri/capabilities/default.json`, and install the matching `@tauri-apps/plugin-*`
-  package if the plugin exposes its own JS API.
+  `.plugin(...)` in `lib.rs`, add the required permission identifiers to the appropriate
+  capability file (`default.json` if it applies to every platform, `mobile.json` — or a new
+  platform-scoped file — if it's platform-specific), and install the matching
+  `@tauri-apps/plugin-*` package if the plugin exposes its own JS API.
