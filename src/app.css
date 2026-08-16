@@ -90,6 +90,20 @@ button, input { font: inherit; }
     padding: 1rem;
 }
 
+/* design: app-wide convention for a failed background API refresh -- see ErrorBanner.svelte */
+.error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, #f87171 45%, var(--app-border));
+    background: color-mix(in srgb, #f87171 12%, var(--app-surface));
+    color: #fecaca;
+    font-size: 0.875rem;
+}
+
 /* ==== app shell (top bar / bottom nav / drawer / popover) ==== */
 
 /* tailwind: fixed + grid-cols-[1fr_auto_1fr] centers the title regardless of the two buttons' widths */

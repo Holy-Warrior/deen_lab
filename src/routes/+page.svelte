@@ -1,6 +1,6 @@
 <script lang="ts">
     import PrayerCardPlaceholder from "$lib/components/home/PrayerCardPlaceholder.svelte";
-    import ToolGridPlaceholder from "$lib/components/home/ToolGridPlaceholder.svelte";
+    import ToolGrid from "$lib/components/home/ToolGrid.svelte";
 </script>
 
 <svelte:head><title>DeenLab</title></svelte:head>
@@ -14,5 +14,5 @@
 
     <PrayerCardPlaceholder />
 
-    <ToolGridPlaceholder />
+    <ToolGrid />
 </div>

@@ -3,7 +3,8 @@
 The original front-end attempt has been moved to [`src/discarded/`](../src/discarded/) — it is
 no longer wired into the SvelteKit routes and is not part of the app that builds today. It's
 kept around only as a reference for the rebuild: what each piece did, and which parts are worth
-carrying forward versus starting over.
+carrying forward versus starting over. See [`frontend-architecture.md`](./frontend-architecture.md)
+for what the rebuild actually looks like and which ideas from here made it in.
 
 Layout inside `src/discarded/`:
 
