@@ -1,4 +1,4 @@
-import type { Coordinates } from "./service";
+import type { Coordinates } from "$lib/services/location";
 
 export interface City extends Coordinates {
     name: string;

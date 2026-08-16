@@ -101,24 +101,48 @@ expression (e.g. `CitySelector.svelte`'s search filter).
 `src/lib/features/<name>/<Name>Page.svelte`. All the actual logic lives in the feature folder
 under `lib/`, not in `routes/`.
 
+## Getting the device's location: `DeviceLocation.svelte`
+
+The whole acquire → classify-failure → retry/escalate → manual-fallback flow is long enough
+that it was pulled out of Qibla (its first consumer) into a reusable, headless-ish component
+any feature needing geolocation can drop in:
+
+```text
+src/lib/services/location.ts        Coordinates, currentCoordinates(), the 3 typed errors
+src/lib/components/location/
+  DeviceLocation.svelte              owns all the state/retry/fallback logic below
+  CitySelector.svelte                bits-ui Combobox search-and-pick fallback
+  cities.ts                          City type, fallbackLocation, the curated city list
+```
+
+`DeviceLocation` takes a `fallback: City` prop and a child snippet, and hands the snippet
+`{ coordinates, locationName, isLoading, refresh }` — the feature only has to turn coordinates
+into whatever it actually needs (a bearing, a lookup key, etc.):
+
+```svelte
+<DeviceLocation fallback={fallbackLocation}>
+    {#snippet children({ coordinates, locationName, isLoading, refresh })}
+        <!-- feature-specific rendering goes here -->
+    {/snippet}
+</DeviceLocation>
+```
+
+Internally it handles everything that made the original Qibla page long:
+`currentCoordinates()` classifies every native geolocation rejection into one of three typed
+errors (see `backend-api.md`'s geolocation section for the exact rejection strings matched);
+a settings-redirect banner appears when Location services are off, auto-retrying via a
+`document.visibilitychange` listener when the user returns to the app (there's no callback for
+"user came back from Settings", so watching page visibility is the standard way to notice it);
+a "Grant permission" banner escalates to the app's own Settings screen (plus a native Toast)
+once Android stops showing its own permission prompt after one denial; and a `CitySelector`
+fallback (search + pick from `cities.ts`) renders automatically whenever GPS genuinely can't
+resolve. `fallbackLocation` is deliberately far from where this app is actually tested from
+(Sydney), so a real GPS fix is visibly different from the fallback instead of looking identical
+to it.
+
 ## Reference feature: Qibla
 
-Worth reading end-to-end as the template for anything else that needs device
-geolocation, since it establishes the pattern for classifying and displaying failures instead
-of one generic error message:
-
-- `src/lib/features/qibla/service.ts` — pure bearing math (`qiblaDirection`), plus
-  `currentCoordinates()` which classifies every native geolocation failure into one of three
-  typed errors (see `backend-api.md`'s geolocation section for the exact rejection strings this
-  matches on).
-- `src/lib/features/qibla/QiblaPage.svelte` — the UI response to each error type: a
-  settings-redirect banner when Location services are off (auto-retries via a
-  `document.visibilitychange` listener when the user returns to the app — there's no callback
-  for "user came back from Settings", so watching page visibility is the standard way to notice
-  it); a "Grant permission" banner that escalates to the app's own Settings screen (plus a
-  native Toast) once Android stops showing its own permission prompt after one denial; and a
-  manual `CitySelector` fallback (search + pick from `cities.ts`, a small curated list) for
-  anything GPS genuinely can't resolve.
-- `fallbackLocation` in `cities.ts` is deliberately far from where this app is actually tested
-  from (Sydney), so a real GPS fix is visibly different from the fallback instead of looking
-  identical to it.
+`src/lib/features/qibla/service.ts` is now just the pure bearing math (`qiblaDirection`) — all
+device-location handling lives in `DeviceLocation.svelte` above. `QiblaPage.svelte` is a short
+example of consuming it: wrap the compass markup in the child snippet and call
+`qiblaDirection(coordinates)` inside it.
