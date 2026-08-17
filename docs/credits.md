@@ -324,6 +324,126 @@ carry their own `Cargo.toml` and license declaration:
 
 ---
 
+## 4. Prayer-card artwork (AI-generated images, shipped as static assets)
+
+- **What it is:** Seven illustrated night-scene mosque backgrounds used behind the Prayer Times
+  home-screen cards, one per prayer — `static/prayer/fajr.webp`, `shuruq.webp`, `dhuhr.webp`,
+  `asr.webp`, `maghrib.webp`, `isha.webp`, `tahajjud.webp` (about 127 KB total). Unlike every other
+  entry in this document, these are not a live third-party API — they are static image files
+  bundled into the app at build time.
+- **Provenance:** The developer generated these images himself, from text prompts, using **Google
+  Gemini's free consumer web interface** (`gemini.google.com`) — not the paid Gemini API or Google
+  AI Studio, and not any stock-image library. The downloaded images were then resized and
+  re-encoded to WebP for the app. This distinction matters because Google publishes **separate**
+  terms for its consumer AI apps versus its paid developer/API products, and only the consumer
+  terms govern this case.
+- **Which terms actually apply:** The older **Generative AI Additional Terms of Service**
+  (`policies.google.com/terms/generative-ai`) — the document most search results surface first —
+  was checked directly and turns out to be superseded: it states plainly that "We updated the
+  Google Terms of Service on May 22, 2024 to cover AI-related topics. As of that date, these
+  Generative AI Additional Terms of Service no longer apply, unless you're a business partner with
+  a signed agreement that references these terms." For an individual using the free consumer app,
+  the governing documents today are the main **Google Terms of Service**
+  (`policies.google.com/terms`), the **Gemini Apps Privacy Notice**
+  (`support.google.com/gemini/answer/13594961`), and the **Generative AI Prohibited Use Policy**
+  (`policies.google.com/terms/generative-ai/use-policy`), which the Privacy Notice references as
+  applying to Gemini Apps.
+- **1. Who owns the output:** Verified directly against `policies.google.com/terms`. Under the
+  "Your content" heading it states, in full: **"Some of our services allow you to generate
+  original content. Google won't claim ownership over that content."** — this sits alongside the
+  general clause "Your content remains yours, which means that you retain any intellectual
+  property rights that you have in your content." Google takes only the standard
+  "worldwide, non-exclusive, royalty-free" operating license (to host/display/reformat content
+  within its own services), not any ownership claim or right to prevent the developer's own
+  downstream use. Net: the developer owns these seven images outright, as between him and Google.
+- **2. Is commercial use permitted:** No clause restricting commercial use, distribution, or use in
+  a paid product was found in either the main Terms of Service or the Generative AI Prohibited Use
+  Policy (`policies.google.com/terms/generative-ai/use-policy`) — both were read in full for this
+  question specifically. The Prohibited Use Policy's restrictions are about *content categories*
+  (deception, illegal content, CSAM, etc.), not about commercial exploitation of legitimate output.
+  This is consistent with Google's own public framing of the same May 2024 ToS change (reported by
+  9to5Google and others) using the example that a user who generates a poem with Gemini can publish
+  it in a book without a license from Google. Net: nothing found distinguishes free vs. paid apps —
+  if DeenLab adds ads or in-app purchases later, this specific ownership/commercial-use grant does
+  not appear to change, though it would be worth re-checking the live terms at that time in case
+  they've been revised again.
+- **3. Is attribution required:** No. Neither the Terms of Service, the Gemini Apps Privacy Notice,
+  nor the Generative AI Prohibited Use Policy impose any requirement to credit Google or disclose
+  AI-generation to the end users of a downstream product. (Google Play's *own* store policy is a
+  separate question — see point 5.)
+- **4. SynthID / watermarking:**
+  - **(a) Obligation not to remove it:** No clause found, in any of the three governing documents,
+    that prohibits a user from processing an image in a way that degrades or removes the invisible
+    SynthID watermark. The only relevant clause in the Prohibited Use Policy is about *intent*, not
+    the watermark itself: "Misrepresenting the provenance of generated content by claiming it was
+    created solely by a human, in order to deceive." Ordinary resizing/re-encoding for a build
+    pipeline, with no claim made anywhere that the art is human-made, does not match that clause.
+    Separately, as of mid-August 2026, Google made its *visible* Gemini watermark icon optional via
+    a user-facing toggle, while stating the invisible SynthID signal and C2PA metadata remain
+    intact regardless — confirming Google treats SynthID as a detection/provenance layer it
+    controls, not something it obligates end users to preserve.
+  - **(b) Would this app's processing likely destroy it:** Google's own DeepMind page on SynthID
+    (`deepmind.google/technologies/synthid`) states the watermark is "designed to stand up to
+    modifications like cropping, adding filters, changing frame rates, or lossy compression" —
+    i.e. built for resilience, but Google does not claim it as indestructible or give a quantified
+    survival rate for any specific pipeline. This app's own processing (downscaling for a mobile UI
+    card, then re-encoding to lossy WebP at aggressive compression — all 7 images together total
+    only ~127 KB) is a heavier transformation than a single lossless format swap, and third-party
+    (non-Google, unverified) write-ups on watermark robustness suggest survival is likely at
+    moderate compression but degrades at low quality/aggressive resizing — those sources are not
+    authoritative and are noted here only as directionally informative, not confirmed. **Whether the
+    watermark actually survives this app's specific WebP output is not publicly documented and was
+    not empirically tested in this pass** (Gemini itself can check a given image via its "ask
+    Gemini" detection feature, which would be the way to close this if it matters practically). It
+    does not appear to create a compliance problem either way: no clause found makes *destroying*
+    the watermark through ordinary processing itself a violation — see (a).
+- **5. Google Play policy on AI-generated content:** Two separate, non-overlapping Play policies
+  were checked:
+  - **Play's "AI-Generated Content" developer policy**
+    (`support.google.com/googleplay/android-developer/answer/14094294`) governs apps whose
+    *functionality* generates AI content for end users (e.g. chatbots, in-app image generators). It
+    explicitly excludes apps outside that scope: "Apps that merely host AI-generated content and
+    are unable to create content using AI, such as social media apps that do not contain AI content
+    generation features." DeenLab has no in-app generation feature — these seven images are fixed,
+    pre-made assets — so **this policy does not appear to apply** to the app.
+  - **Play Console's separate AI-content self-declaration flow**
+    (`support.google.com/googleplay/android-developer/answer/17262077`) is narrower and different in
+    kind: it requires a self-declaration checkbox ("Regulations require that AI-generated content be
+    labeled under certain circumstances") for **visual assets uploaded directly into Play Console's
+    Store listing / promotional content flows** — screenshots, feature graphic, promo video, etc.
+    This is not about in-app functionality at all; it's about what the developer uploads to the
+    Play Console store-listing UI. Its documentation does **not** distinguish between "a standalone
+    image that is itself wholly AI-generated" and "an ordinary screenshot of the app's real UI that
+    happens to show some AI-made background art among genuine app content" — that specific nuance
+    is not addressed either way. **Practical recommendation, not a documented requirement:** if any
+    Play Console upload flow for this app's store listing prompts an AI-content declaration on an
+    asset that shows this artwork, the safer choice is to declare it, since Google states declared
+    assets simply get labeled on the Store (no stated penalty for declaring), whereas non-disclosure
+    where required is a policy violation.
+- **6. Depicting real, identifiable mosques — informational, not a blocker:** The seven images are
+  stylised silhouette illustrations evoking real buildings (Quba, Masjid an-Nabawi, Badshahi,
+  Hassan II, Sheikh Zayed, Masjid al-Haram, and a generic Tahajjud night scene), not photographs.
+  Under U.S. copyright law, the **Architectural Works Copyright Protection Act** (17 U.S.C. § 120(a),
+  confirmed via the U.S. Code text at `uscode.house.gov`) specifically carves out this situation:
+  copyright in a constructed building "does not include the right to prevent the making,
+  distributing, or public display of pictures, paintings, photographs, or other pictorial
+  representations of the work, if the building...is located in or ordinarily visible from a public
+  place." All of these are famous, publicly visible buildings, and the app's illustrations are
+  stylised rather than literal reproductions, which further reduces any residual concern. No
+  trademark registration covering any of these buildings' silhouettes was found (unlike, for
+  example, some hotels that have separately trademarked a building's distinctive shape). Net: this
+  is worth knowing about but nothing found here rises to a real risk for a free app.
+- **Net assessment:** For a free app with no ads or IAP today, nothing found in Google's governing
+  terms blocks shipping these images — the developer owns the output, no commercial-use
+  restriction applies, and no attribution/disclosure is contractually required by Google itself.
+  The two things actually worth doing are practical, not legal-compliance gaps: (1) treat Play
+  Console's AI-content declaration checkbox as something to answer honestly if it ever surfaces
+  for a store-listing asset that shows this artwork, and (2) if monetization is added later, this
+  section's "no commercial-use restriction" finding is worth a quick re-check against whichever
+  terms are live at that time, since none of these documents guarantee they won't change.
+
+---
+
 ## What could not be verified
 
 For transparency, the specific points in this document that could not be confirmed from an
@@ -352,3 +472,15 @@ from what's written above. What remains genuinely open is narrower now.)
   files — but no longer an open licensing question in itself. The license was found and is
   explicit: font redistribution/commercial use is "not permitted" without permission obtained
   directly from the rights holder (see above).
+- **Prayer-card artwork (the seven `static/prayer/*.webp` mosque images)**: the governing Google
+  terms were located and read in full, and the ownership/commercial-use questions are resolved
+  (see above) — what's left open is narrower and mostly empirical rather than legal: (1) whether
+  the invisible SynthID watermark actually survives this app's specific resize-then-lossy-WebP
+  pipeline was not tested and is not something Google documents for a specific pipeline, only that
+  the watermark is "designed to stand up to" common transformations in general; this is flagged as
+  low-stakes since no clause found makes incidental watermark loss through ordinary processing a
+  violation in itself. (2) Whether Play Console's AI-content self-declaration checkbox
+  (`answer/17262077`) would apply to an ordinary app screenshot that merely shows this artwork as
+  part of the real UI, versus only to a standalone AI-generated promotional image, is not
+  addressed in Google's own documentation either way — treat this as a "declare it if prompted"
+  practical default rather than a resolved policy question.
