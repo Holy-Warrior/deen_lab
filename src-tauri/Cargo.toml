@@ -22,7 +22,16 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+# bundled: compiles SQLite from source, which guarantees FTS5 is present. The Android system
+# SQLite cannot be relied on for FTS5, and the Hadith bundles are useless without it.
+rusqlite = { version = "0.32", features = ["bundled"] }
+# mirrors the Python pipeline's NFD-based Arabic normalisation (see docs/hadith-data.md)
+unicode-normalization = "0.1"
+flate2 = "1"
+sha2 = "0.10"
+futures-util = "0.3"
+tauri-plugin-notification = "2"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

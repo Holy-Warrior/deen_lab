@@ -11,3 +11,5 @@ vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 # build/dev-server output redirected to a file so it can be tailed in an editor
 *.log
+# generated Hadith bundles -- published to the data repo, not tracked here
+build-hadith-bundles/
