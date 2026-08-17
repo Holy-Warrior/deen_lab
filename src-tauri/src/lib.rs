@@ -1,7 +1,5 @@
 ﻿mod api_cache;
-mod downloads;
 mod groq_config;
-mod hadith;
 mod ip_location;
 use serde::{Deserialize, Serialize};
 const FEATURE_STUDIO_PROMPT: &str = r#"
@@ -84,7 +82,6 @@ async fn build_feature(prompt: String) -> Result<FeatureBuildResult, String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_notification::init())
         .setup(|_app| {
             // rust: _app is only used inside this cfg-gated block -- the underscore
             // prefix keeps desktop builds (where the block compiles out) warning-free
@@ -97,20 +94,11 @@ pub fn run() {
             Ok(())
         })
         .manage(api_cache::HttpClient::default())
-        .manage(downloads::DownloadManager::default())
         .invoke_handler(tauri::generate_handler![
             build_feature,
             api_cache::api_request,
             api_cache::get_cached_response,
-            ip_location::ip_location,
-            downloads::download_file,
-            downloads::cancel_download,
-            hadith::hadith_installed,
-            hadith::hadith_install,
-            hadith::hadith_delete,
-            hadith::hadith_books,
-            hadith::hadith_by_book,
-            hadith::hadith_search
+            ip_location::ip_location
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
