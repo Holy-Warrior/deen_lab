@@ -1,5 +1,6 @@
 ﻿mod api_cache;
 mod groq_config;
+mod ip_location;
 use serde::{Deserialize, Serialize};
 const FEATURE_STUDIO_PROMPT: &str = r#"
 You are the DeenLab Feature Studio. Decide whether a request is for a small, useful Deen-related interactive feature.
@@ -96,7 +97,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             build_feature,
             api_cache::api_request,
-            api_cache::get_cached_response
+            api_cache::get_cached_response,
+            ip_location::ip_location
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
