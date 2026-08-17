@@ -30,12 +30,13 @@ enum TabType {
   generatedFeature,
 }
 
+// Hadees is deliberately absent here. The feature's code is left in place, but nothing
+// surfaces it any more, because the hadith database it reads is no longer shipped.
 enum HomeWidgetType {
   prayerTimes,
   sehriIftari,
   qibla,
   quran,
-  hadees,
   dua,
 }
 
@@ -50,8 +51,6 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return 'qibla';
       case HomeWidgetType.quran:
         return 'quran';
-      case HomeWidgetType.hadees:
-        return 'hadees';
       case HomeWidgetType.dua:
         return 'dua';
     }
@@ -67,8 +66,6 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return 'Qibla';
       case HomeWidgetType.quran:
         return 'Quran';
-      case HomeWidgetType.hadees:
-        return 'Hadees';
       case HomeWidgetType.dua:
         return 'Dua';
     }
@@ -84,8 +81,6 @@ extension HomeWidgetTypeX on HomeWidgetType {
         return Icons.explore_rounded;
       case HomeWidgetType.quran:
         return Icons.menu_book_rounded;
-      case HomeWidgetType.hadees:
-        return Icons.auto_stories_rounded;
       case HomeWidgetType.dua:
         return Icons.volunteer_activism_rounded;
     }
@@ -209,7 +204,6 @@ class DeenLabTabController extends ChangeNotifier {
       ),
       DeenLabTab(id: 'qibla', title: 'Qibla', type: TabType.qibla),
       DeenLabTab(id: 'quran', title: 'Quran', type: TabType.quran),
-      DeenLabTab(id: 'hadees', title: 'Hadees', type: TabType.hadees),
       DeenLabTab(id: 'dua', title: 'Dua', type: TabType.dua),
       ..._generatedFeatures.map(
         (feature) => DeenLabTab(

@@ -1,6 +1,5 @@
 import 'package:deen_lab/features/feature_studio/ui/feature_studio_tab.dart';
 import 'package:deen_lab/features/feature_studio/ui/generated_feature_webview_tab.dart';
-import 'package:deen_lab/features/hadees/ui/hadees_tab.dart';
 import 'package:deen_lab/features/prayer_times/prayer_time_tab.dart';
 import 'package:deen_lab/features/qibla/ui/qibla_tab.dart';
 import 'package:deen_lab/features/quran/ui/quran_tab.dart';
@@ -169,13 +168,6 @@ class _BentoGrid extends StatelessWidget {
                 ),
               ),
               _FeatureCard(
-                type: _CardType.hadees,
-                icon: Icons.auto_stories_rounded,
-                label: 'Hadees',
-                accent: const Color(0xFFE85B8A),
-                onTap: () => _openPage(context, const HadeesTab(), 'Hadees'),
-              ),
-              _FeatureCard(
                 type: _CardType.dua,
                 icon: Icons.volunteer_activism_rounded,
                 label: 'Dua',
@@ -218,7 +210,7 @@ class _BentoGrid extends StatelessWidget {
   }
 }
 
-enum _CardType { prayer, quran, qibla, sehri, hadees, dua, generated }
+enum _CardType { prayer, quran, qibla, sehri, dua, generated }
 
 class _FeatureCard extends StatefulWidget {
   const _FeatureCard({

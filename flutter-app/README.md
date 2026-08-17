@@ -10,7 +10,7 @@ At a high level, DeenLab is designed around a simple workflow:
 2. A reminder can **start the native Silence of Salah engine** (when enabled).
 3. The engine runs **on-device** as an Android foreground service, performs sensor-driven ML inference, and manages its own shutdown when prayer is no longer detected.
 
-The app also includes a set of core tools (Quran, Hadith, Qibla, timings) and a built-in Tool Builder to add more utilities when needed.
+The app also includes a set of core tools (Quran, Qibla, timings) and a built-in Tool Builder to add more utilities when needed.
 
 ## Key Features
 
@@ -19,7 +19,6 @@ The app also includes a set of core tools (Quran, Hadith, Qibla, timings) and a 
 - **Silence of Salah (Android)**: Android-native foreground service for ML-driven silent/restore behavior (permission-gated).
 - **Qibla Direction**: Compass-driven direction with fallbacks when sensors are unavailable.
 - **Quran**: Surah list and reader.
-- **Hadith Library**: Local hadith database shipped with the app (`resources/hadith.db`).
 - **Sehri & Iftari**: Daily countdowns and monthly fasting calendar.
 - **Feature Studio / Tool Builder**: Generate new tool tabs when something you need is not built-in yet.
 
@@ -57,11 +56,17 @@ flutter run
 ### Data Sources
 
 - Prayer timings, Quran, and Qibla direction use network APIs (when available).
-- Hadith content is stored locally in `resources/hadith.db`.
+
+### A Note on the Hadith Library
+
+The app used to ship a local hadith database. Its translations were not ours to redistribute, so
+the database is no longer included and nothing in the app links to the feature any more. The code
+under `lib/features/hadees/` is left in place, unused, in case the content is ever replaced with a
+source that can be shared.
 
 ## Project Structure (High Level)
 
-- `lib/features/*`: Feature modules (Prayer Times, Quran, Hadith, Qibla, Sehri/Iftari, Feature Studio).
+- `lib/features/*`: Feature modules (Prayer Times, Quran, Qibla, Sehri/Iftari, Feature Studio).
 - `lib/app_shell/*`: Tab shell, navigation, and Home dashboard.
 - `android/`: Android-specific components, including reminder receivers and the integration channel used by the app.
 
