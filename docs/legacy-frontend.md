@@ -1,27 +1,26 @@
 # Legacy Front-End Reference
 
-The original front-end attempt was moved to [`src/discarded/`](../src/discarded/) — never wired
-into the SvelteKit routes, never part of the app that builds today, kept only as a reference for
-the rebuild. See [`frontend-architecture.md`](./frontend-architecture.md) for what the rebuild
-actually looks like and which ideas from here made it in.
+The original front-end attempt lived in `src/discarded/` — never wired into the SvelteKit routes,
+never part of the app that builds today, kept only as a reference while features were rebuilt one
+by one. See [`frontend-architecture.md`](./frontend-architecture.md) for what the rebuild actually
+looks like and which ideas from here made it in.
 
-**That tree has now been pruned.** Once a feature was rebuilt, its old source stopped earning its
-keep, and the whole `lib/ui` kernel plus the `lib/services` stub were superseded outright. Only
-the two features that have **not** been rebuilt yet still exist as code:
+**That tree is now gone entirely.** It was pruned as each feature was rebuilt, and deleted outright
+once the last two entries stopped earning their keep:
 
-```text
-src/discarded/
-  lib/features/
-    hadith/          - service.ts + HadithPage.svelte
-    feature-studio/  - service.ts + storage.ts + FeatureStudioPage.svelte
-```
+- `feature-studio/` — **rebuilt**, so the reference was no longer needed. See
+  [`feature-studio.md`](./feature-studio.md), and the section below for what carried over.
+- `hadith/` — the feature was **dropped, not rebuilt**: its data sources could not be licensed.
+  Keeping dead code as a reference for something nobody intends to build again is just clutter.
+  The whole investigation, including that code, is archived outside this repository in
+  `deen-lab-tauri-discarded-data-effort/`.
 
-Everything else described below has been **deleted**, and this document is now the only record of
-it. The descriptions are kept deliberately — they are the point of the file. Each section says
-what replaced it, so a future rebuild can see both the original design and where its ideas landed.
+**This document is now the only record of any of it**, which is precisely why the descriptions
+below are kept in full. Each section says what replaced it, so a future rebuild can see both the
+original design and where its ideas landed. Git history has the code itself if it is ever needed.
 
-Deleting the rest also took the project from 9 `svelte-check` errors to **zero**: every remaining
-error was a dangling `$lib/ui` or `$lib/features/*` import inside these unbuilt files.
+Pruning the tree also took the project from 9 `svelte-check` errors to **zero**: every remaining
+error was a dangling `$lib/ui` or `$lib/features/*` import inside those unbuilt files.
 
 ## Overall verdict
 
@@ -192,7 +191,15 @@ feature that made the old `routes/+page.svelte` just call `<PageRenderer page="h
   card (Sehri-ends-soon vs. Iftar-soon vs. tomorrow, live countdown via `setInterval`), today's
   three key times, and a scrollable month calendar with prev/next navigation.
 
-### `feature-studio` *(still present — not rebuilt yet)*
+### `feature-studio` *(rebuilt, old source deleted)*
+
+Rebuilt as `src/lib/features/feature-studio/` — see [`feature-studio.md`](./feature-studio.md).
+The storage shape and the sandboxed-iframe idea carried over almost unchanged; what changed is
+that the model now returns **body-only markup** instead of a whole document, the app injects a
+bundled Tailwind runtime and a CSP around it, the preview is full-screen via shallow routing
+rather than a desktop sidebar, and backend errors are actually surfaced (the old `catch` tested
+only `instanceof Error`, so every Tauri rejection — which arrives as a plain string — fell
+through to a generic message).
 
 - `service.ts`: the one feature that actually calls into Rust —
   `buildFeature(prompt)` → `invoke("build_feature", { prompt })` (see
@@ -210,9 +217,9 @@ feature that made the old `routes/+page.svelte` just call `<PageRenderer page="h
 ## Known architectural problems (why this got discarded)
 
 These are the reasons the rebuild happened. Points 1–3 and 5 are resolved in the current
-front-end; point 4 turned out to be a false alarm. They stay listed because the two features
-still sitting in `src/discarded/` (`hadith`, `feature-studio`) were written under all of them,
-and whoever rebuilds those needs to know what to fix on the way through.
+front-end; point 4 turned out to be a false alarm. They stay listed because every feature
+described above was written under all of them — so anyone reading this file for design ideas
+should take the ideas and not the implementation.
 
 1. **Every data-fetching feature bypasses the Rust backend.** Quran, prayer-times, duas,
    hadith, and sehri-iftari all call third-party APIs with the browser's `fetch()` directly,

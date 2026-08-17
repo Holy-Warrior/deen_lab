@@ -14,6 +14,9 @@ small local native plugin for Android-specific functionality (see below).
 - [`docs/frontend-architecture.md`](docs/frontend-architecture.md) — the app shell, routing,
   the tool-registry mechanism (how a new tool gets added to the home grid), and the shared
   conventions (error display, cache-then-network data fetching) every feature follows.
+- [`docs/feature-studio.md`](docs/feature-studio.md) — how Studio generates tools with Groq: why
+  the app injects Tailwind instead of letting the model link it, how a generated tool is sandboxed,
+  and the measured rate limits that shaped the model choice.
 - [`docs/legacy-frontend.md`](docs/legacy-frontend.md) — what the first-pass front-end did, and
   which of its ideas were carried into the rebuild. Most of that code has now been deleted as
   each feature got rebuilt, so this doc is the surviving record of it.
@@ -52,8 +55,8 @@ src/
     tools/                the tool-registry mechanism (types + glob-based discovery)
     services/             cross-feature helpers (apiCache, deviceSettings)
     features/<name>/      one folder per feature: service.ts, <Name>Page.svelte, tool.ts
-  discarded/              only the not-yet-rebuilt first-pass features (hadith,
-                            feature-studio) -- everything else deleted, see legacy-frontend.md
+                          (the first-pass front-end is fully deleted -- see legacy-frontend.md,
+                            which is now the only record of what it did)
 
 src-tauri/
   src/                    main Rust app crate (commands, setup)
