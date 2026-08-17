@@ -1,89 +1,50 @@
 # DeenLab
 
-DeenLab is a mobile Islamic utility app that combines daily worship tools with an Android-native Machine Learning engine that can automatically silence your phone during salah (nimaz).
+DeenLab is a mobile app of Islamic daily-practice tools — prayer times, Qibla direction, Quran,
+duas, Sehri & Iftari timings, and a Feature Studio that builds small extra tools on request.
 
-## What It Does
+It has been written twice. The Flutter version came first; the Tauri version is a rewrite of the
+same idea on a different stack. Both of them work, so both are kept here rather than one
+replacing the other.
 
-At a high level, DeenLab is designed around a simple workflow:
+## The two apps
 
-1. **Prayer reminders** fire shortly before salah.
-2. A reminder can **start the native Silence of Salah engine** (when enabled).
-3. The engine runs **on-device** as an Android foreground service, performs sensor-driven ML inference, and manages its own shutdown when prayer is no longer detected.
+| App | Stack | Directory |
+| --- | --- | --- |
+| Flutter | Flutter / Dart, with Android-native Kotlin | [`flutter-app/`](flutter-app/) |
+| Tauri | Tauri v2 / Rust, with SvelteKit 5 and Tailwind 4 | [`tauri-app/`](tauri-app/) |
 
-The app also includes a set of core tools (Quran, Hadith, Qibla, timings) and a built-in Tool Builder to add more utilities when needed.
+Each app also has a branch holding only that app, for when checking out both is not wanted:
 
-## Key Features
+- `flutter-app-deen-lab`
+- `tauri-app-deen-lab`
 
-- **Prayer Times**: City-based prayer timings with calculation method selection.
-- **Prayer Reminders**: 3-minute reminders with per-prayer enable/disable.
-- **Silence of Salah (Android)**: Android-native foreground service for ML-driven silent/restore behavior (permission-gated).
-- **Qibla Direction**: Compass-driven direction with fallbacks when sensors are unavailable.
-- **Quran**: Surah list and reader.
-- **Hadith Library**: Local hadith database shipped with the app (`resources/hadith.db`).
-- **Sehri & Iftari**: Daily countdowns and monthly fasting calendar.
-- **Feature Studio / Tool Builder**: Generate new tool tabs when something you need is not built-in yet.
+## How the two differ
 
-## Platform Support
+The Tauri version is a rewrite rather than a straight port, and it is not finished:
 
-- **Android**: Supported (includes the Silence of Salah engine and reminder scheduling).
-- **iOS**: The Silence of Salah engine is not implemented on iOS. Other Flutter-only tools may work depending on platform constraints.
+- **Not carried over yet** — prayer reminders, and the Silence of Salah engine that mutes the
+  phone during salah. That engine is an Android foreground service kept in its own repository,
+  [silence_of_salah_engine](https://github.com/Holy-Warrior/silence_of_salah_engine), and so far
+  only the Flutter app is wired up to it.
+- **Deliberately dropped** — the Hadith library. Its translations could not be licensed for
+  redistribution, so the feature was removed instead of shipped on unclear terms.
+- **Rebuilt, not ported** — the Feature Studio. Both versions turn a plain-English description
+  into a small tool, but the Tauri one runs each generated tool in a sandbox, keeps every
+  version, and can revise a tool after it has been made.
 
-## Permissions (Android) and Why They're Needed
+Prayer times, Qibla, Quran, duas and Sehri & Iftari exist in both.
 
-Some features require Android permissions/settings for reliability:
+## Building either one
 
-- **Location**: Auto-detect city/country for prayer timings and Qibla utilities.
-- **Notifications**: Prayer reminders and foreground notifications.
-- **Exact alarms**: Reliable reminder timing on modern Android.
-- **Do Not Disturb access**: Required to switch silent/restore policy correctly.
-- **Battery optimizations**: Improves reliability when running background/foreground tasks.
+Each app carries its own setup instructions:
 
-DeenLab's Prayer Settings screen explains the dependency chain (reminders -> permissions -> engine start from reminders).
+- [`flutter-app/README.md`](flutter-app/README.md)
+- [`tauri-app/README.md`](tauri-app/README.md)
 
-## Developer Setup
-
-### Prerequisites
-
-- Flutter SDK (Dart SDK included)
-- Android Studio (Android SDK / emulator) or a physical Android device
-
-### Run Locally
-
-```bash
-flutter pub get
-flutter run
-```
-
-### Data Sources
-
-- Prayer timings, Quran, and Qibla direction use network APIs (when available).
-- Hadith content is stored locally in `resources/hadith.db`.
-
-## Project Structure (High Level)
-
-- `lib/features/*`: Feature modules (Prayer Times, Quran, Hadith, Qibla, Sehri/Iftari, Feature Studio).
-- `lib/app_shell/*`: Tab shell, navigation, and Home dashboard.
-- `android/`: Android-specific components, including reminder receivers and the integration channel used by the app.
-
-## Privacy
-
-- **On-device ML inference**: The Silence of Salah engine runs locally on your device.
-- **No accounts by default**: DeenLab does not require an account to use the core tools.
-- **Location usage**: Location is used to auto-detect city/country for religious utilities and may be stored in app settings/caches for convenience.
-
-## Troubleshooting
-
-- **Quran loads slowly / times out**: Check your internet connection and retry. The app will show an error state instead of crashing.
-- **Prayer reminders not firing**: Ensure notifications are allowed, exact alarms are permitted, and battery optimization restrictions are relaxed for DeenLab.
-- **Location detection fails**: Enable GPS/location services and grant location permission (or enable it from app settings if permanently denied).
+The Flutter app keeps its hadith database in Git LFS, so run `git lfs install` before cloning if
+you intend to build it. The Tauri app needs no LFS.
 
 ## License
 
-**Proprietary**. All rights reserved.
-
-## Roadmap (Short)
-
-- Improved offline caching and resilience for network-based tools.
-- Richer Home widgets and deeper quick actions.
-- More Tool Builder templates and better generated-tab management.
-- iOS parity planning for non-engine features (engine support would require separate native work).
+Proprietary. All rights reserved.
