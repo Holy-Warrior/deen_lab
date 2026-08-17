@@ -20,12 +20,33 @@ than guessed.
   `src/lib/features/sehri-iftari/service.ts`).
 - **API key:** Not required. This app's own requests carry no key or auth header of any kind, and
   the endpoints respond to plain unauthenticated `GET` requests.
-- **Licensing / terms:** Could not verify a formal license or terms-of-use document. Aladhan's own
-  "credits and terms" page (aladhan.com/credits-and-terms) states the API is provided "WITHOUT ANY
-  WARRANTY" and that its prayer-time calculations are based on the open-source
-  [Pray Times](http://praytimes.org) project by Hamid Zarrabi-Zadeh, but it does not publish a
-  named software license (e.g. MIT) covering API usage. Treat this as a free public data service
-  used at the app's own risk rather than a formally licensed dependency.
+- **Licensing / terms:** Verified directly against both `aladhan.com/credits-and-terms` and its
+  duplicate at `islamic.network/terms-and-conditions.html` (Aladhan is operated by Islamic
+  Network). Both pages are short and contain, in full, only:
+  - A blanket warranty disclaimer: "made available in the hope that they will be useful, but
+    WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+    PARTICULAR PURPOSE."
+  - A note that prayer-time calculations are "based on the calculations, methods and formulas
+    discussed on [praytimes.org](http://praytimes.org)" (the open-source Pray Times project by
+    Hamid Zarrabi-Zadeh).
+  - Neither page contains **any** clause on commercial use, attribution, rate limits, or
+    caching/bundling of responses — those topics simply aren't addressed anywhere in Islamic
+    Network's published terms. That silence cuts both ways: nothing here forbids this app's
+    caching-to-disk behaviour, but nothing formally permits it either.
+  - **On the "GPL-3.0" claim:** search results surface a GPL-3.0 license, but it belongs to
+    `aladhan/api-client` — an abandoned, third-party-maintained **PHP client SDK** for calling the
+    REST API (confirmed on its Packagist listing), not to the API service, its terms, or the data
+    it returns. This app calls the REST API directly over HTTP via `reqwest` and does not use that
+    SDK, so this GPL-3.0 license does not apply to or encumber this app in any way.
+  - **Rate limits:** community discussion (Islamic Network's own forum) is reported elsewhere to
+    mention per-IP throttling around 12 requests/second, but the forum is a JavaScript-rendered
+    app whose content could not be retrieved directly to confirm the exact wording or attribute it
+    to a maintainer. Treat any specific number as an unverified community report, not a documented
+    policy — Islamic Network's actual terms pages state no rate limit at all.
+  - **Net assessment:** this remains a free public data service used at the app's own risk, with
+    no formal software/content license and no explicit commercial-use grant, but also with no
+    explicit prohibition on the kind of moderate, cached, non-commercial-resale use this app makes
+    of it.
 
 ### UmmahAPI
 
@@ -37,9 +58,43 @@ than guessed.
 - **API key:** Not required for the endpoints this app calls — this app's requests carry no key,
   and UmmahAPI's own site states basic use needs no signup, subject to a shared rate limit (an
   optional free key raises that limit, which this app does not use).
-- **Licensing / terms:** Could not verify a formal license. UmmahAPI describes itself as
-  "Free Forever, Built for the Ummah" but its site does not publish a named software or content
-  license governing reuse of the API's output.
+- **Licensing / terms:** Confirmed there is **no discoverable Terms of Service, Privacy Policy, or
+  License page anywhere on the site.** Every link in the homepage's navigation and footer was
+  enumerated directly (`ummahapi.com`) — Services, Prayer Times, Tools, Widgets, Blog, Docs,
+  Sponsor, Get API Key, Discord, Dashboard, API Status, and several individual free-tool pages —
+  and none of them is a terms/privacy/license page; `/terms` returns a 404. UmmahAPI describes
+  itself as "Free Forever, Built for the Ummah," and its docs/marketing pages state rate limits
+  inconsistently (`/api/docs` states "up to 100 requests per minute" for anonymous use, while
+  another page states "5,000 / 15 min" general and "300 / min" for calculations) — this
+  inconsistency itself is a sign the service is informally run rather than governed by a fixed,
+  published policy.
+  - **This is itself the important finding, stated plainly:** this app depends on a single free
+    service, run informally, with **no license, no SLA, no attribution requirement, and no
+    published terms of any kind** — meaning there is also no written commitment that the service
+    will keep existing, keep its current shape, or keep being free. The operational risk is not
+    that the app is violating a term (there are none to violate) but that the dependency itself is
+    unusually fragile for something a shipped app relies on for two entire features (Quran and
+    Duas). If UmmahAPI disappears or changes its response shape without notice, both features break
+    with no recourse, and there is no license to point to that would obligate advance notice.
+  - **Underlying Quran translation copyright is a separate question from the API's terms**, and
+    was checked independently:
+    - **Sahih International:** its copyright/licensing terms could not be pinned to a single
+      authoritative source — it is published by Dar Abul Qasim/Al-Muntada Al-Islami and is widely
+      mirrored (Internet Archive, kalamullah.com, and others) as a freely downloadable text, but no
+      page found states a formal redistribution license, and it was not possible to confirm from a
+      primary source which upstream text UmmahAPI itself pulls from. Treat this translation's
+      redistribution rights as **not resolved**, independent of UmmahAPI's own (nonexistent) terms.
+    - **Pickthall** (*The Meaning of the Glorious Koran*, 1930): confirmed via Wikipedia's article
+      on the translation that it is public domain in death-plus-70 jurisdictions (e.g. UK/EU, since
+      2006) and death-plus-50 jurisdictions (e.g. Pakistan, Canada, Australia), since Pickthall died
+      in 1936. However, the same source states it is "technically not in the public domain in the
+      US, because it was published in India after 1922" — a US-specific wrinkle worth flagging
+      since this app targets Google Play, whose store terms are anchored to US law. This was not
+      independently verified against a copyright-registry source; treat it as a plausible but
+      unconfirmed complication rather than a settled fact.
+    - Net: even setting UmmahAPI's own missing terms aside, at least one of the translations it
+      serves (Pickthall, for US distribution) and one other (Sahih International, sourcing
+      unconfirmed) carry open copyright questions that this research pass could not close.
 
 ### ipwho.is
 
@@ -108,9 +163,46 @@ than guessed.
   copying `src-tauri/src/groq_config.example.rs` (which ships with an empty key) and filling in a
   real one. Concretely: **as shipped from this repository, Feature Studio is inert** unless
   whoever builds the app supplies their own Groq key at build time.
-- **Licensing / terms:** Could not fully verify. Groq's public "Terms of Use" page covers website
-  access only and explicitly defers actual API/cloud-service usage to a separate "Groq Services
-  Agreement," which was not reviewed here. No content-reuse license is published for API output.
+- **Licensing / terms:** The developer-facing **Groq Services Agreement**
+  (`console.groq.com/docs/legal/services-agreement`) — the document the website Terms of Use
+  defers to for actual API usage — was located and reviewed directly. Key points, quoted from the
+  agreement:
+  - **Who it binds:** acceptance happens "By clicking 'I agree,' accepting the Order Form, or
+    using the Cloud Services" — i.e. it applies to anyone who uses the API, including an individual
+    developer on a free console API key, not only enterprise customers with a signed contract. This
+    matters for how this app is built: since **no Groq key ships with the repository** (it lives in
+    the gitignored `src-tauri/src/groq_config.rs`, and Feature Studio is inert until a builder
+    supplies their own key), it is each individual builder — not this project — who personally
+    accepts this agreement when they create their own Groq account/key.
+  - **Output ownership:** "As between the parties, Customer retains all Intellectual Property
+    Rights in Customer Data (including in Inputs and Outputs)" — the app/builder, not Groq, owns
+    the generated HTML mini-tools.
+  - **Redistribution to end users is explicitly permitted:** the agreement grants the right "to use
+    Groq's APIs to integrate the Cloud Services and AI Model Services into your Customer
+    Application and to make the Cloud Services and AI Model Services available to End Users through
+    your Customer Applications" — this covers exactly Feature Studio's model of generating content
+    server-side (from Rust) and showing it to the app's own users.
+  - **Provenance/attribution constraint:** Customer may not "modify, tamper with, remove, obscure,
+    or otherwise alter any transparency or provenance information...associated with the Output
+    generated by AI Model Services...that is used to identify it as being generated using a
+    generative artificial intelligence model." In practice: if Groq attaches any AI-provenance
+    metadata to a response, this app must not strip it — though nothing in the agreement requires
+    a visible "Powered by Groq" credit, so listing Groq here remains a courtesy disclosure rather
+    than a contractual requirement.
+  - **Groq is restricted from training on the app's data:** "Groq is not permitted to use Inputs or
+    Outputs for training or fine-tuning any AI Model Services or other models, unless explicitly
+    granted permission or instructed by Customer" — this protects whatever prompts/outputs Feature
+    Studio sends, rather than constraining the app.
+  - **No warranty:** Groq "does not make and expressly disclaims to the fullest extent permitted by
+    applicable law...any warranties of any kind, whether express, implied, statutory, or
+    otherwise" — standard AS-IS terms, consistent with every other free API this app calls.
+  - **Net assessment:** nothing in the Services Agreement blocks this app's use — output ownership
+    and in-app redistribution to end users are both explicitly addressed and favorable. The only
+    operational constraint is the provenance-metadata clause above, and the practical dependency
+    risk is unchanged from before: **Feature Studio only works if the person building the app
+    supplies their own Groq API key**, and that key is a paid-usage-capable Groq account (Groq does
+    offer a free tier with usage limits per the agreement's "fee-free" services language, but any
+    heavier use is billed to whoever's key it is, not to this project).
 
 ### QCF Quran fonts (reference only — not shipped)
 
@@ -121,12 +213,27 @@ than guessed.
 - **Status in this app: not included.** That prototype was deliberately reverted and is not part
   of the current codebase or build — it exists only as external reference material on the project
   owner's own machine, kept in case the feature is revisited.
-- **Licensing:** The font files are stated to be provided "for Quranic rendering purposes" only.
-  This is a use-restriction, not a redistribution grant — the repository does not publish explicit
-  terms permitting the fonts to be bundled/redistributed inside another app. Consistent with that,
-  `docs/frontend-architecture.md` notes the fonts would need to be fetched live from the source
-  per device, "never vendored into this repo." **This app currently distributes none of these font
-  files.**
+- **Licensing:** The repository's `LICENSE.md` was located and read directly (verified via the raw
+  file at `github.com/MohamadHajjRabee/quran-qcf4`), and it turns out to split licensing explicitly
+  by file type rather than leaving the fonts under only an informal note:
+  - The **data files** (`pages/`, `index.json`, `verses.json`, `font-map.json`, `qbsml.json`) are
+    MIT-licensed, copyright the repo's maintainer, Mohamad Hajj Rabee.
+  - The **font files themselves** (`fonts/` and `fonts-woff2/` — the QCF4 fonts, based on the
+    Madinah Mushaf, calligraphy by Uthman Taha, produced by the King Fahd Quran Complex, WOFF2/TTF
+    conversion by Ahmad ElGharib) carry an **explicit restriction, not just an informal note**:
+    the license states they are "provided solely for Quranic rendering purposes," and — this is
+    the operative sentence — that **"redistribution, modification, or commercial use...without
+    explicit permission...is not permitted."**
+  - This resolves the open question from the previous pass: it is not merely an informal
+    "for Quranic rendering purposes" aside with no stated terms — there is a written license, and
+    it explicitly forbids exactly what shipping the fonts inside an app's assets would require
+    (redistribution and, since this app is commercial-adjacent even if free, arguably commercial
+    use) unless explicit permission is separately obtained from the rights holder.
+  - Consistent with that, `docs/frontend-architecture.md` notes the fonts would need to be fetched
+    live from the source per device, "never vendored into this repo." **This app currently
+    distributes none of these font files**, which is the only posture compatible with the license
+    as written; bundling them into a shipped APK without first obtaining explicit permission would
+    not be.
 
 ### Other external URLs found in the repository
 
@@ -220,17 +327,28 @@ carry their own `Cargo.toml` and license declaration:
 ## What could not be verified
 
 For transparency, the specific points in this document that could not be confirmed from an
-authoritative source, and why:
+authoritative source, and why. (A later research pass closed several previously-open items below —
+Aladhan's terms, Groq's Services Agreement, and the QCF font license were all found and reviewed;
+the OpenStreetMap Nominatim policy was re-checked against the live policy page and found unchanged
+from what's written above. What remains genuinely open is narrower now.)
 
-- **Aladhan API**: no published software/content license was found, only a general "no warranty"
-  disclaimer on its credits-and-terms page; whether an API key is technically optional or simply
-  unenforced could not be confirmed beyond observing this app's own keyless requests work.
-- **UmmahAPI**: no published software/content license was found on the provider's site.
+- **Aladhan API**: its full published terms were located and read in full (see above) — the gap is
+  no longer "terms weren't found," it's that the terms themselves are minimal: no clause on
+  commercial use, attribution, or caching exists to confirm either way. A specific per-IP rate
+  limit (~12 req/s) is reported in secondhand summaries of Islamic Network's own community forum,
+  but the forum is a JS-rendered app that could not be fetched directly to confirm the exact
+  figure or source — this number should be treated as unverified. Whether an API key is technically
+  optional or simply unenforced also still could not be confirmed beyond observing this app's own
+  keyless requests work.
+- **UmmahAPI**: confirmed (not just "not found") that no Terms of Service, Privacy Policy, or
+  License page exists anywhere on the site — every nav/footer link was checked. What's genuinely
+  unresolved: (1) which upstream source UmmahAPI itself draws its Sahih International translation
+  text from, and that source's own redistribution license; (2) the US copyright status of the
+  Pickthall translation specifically, which one source describes as unsettled due to its 1930
+  India publication. Both would need the provider or a copyright specialist to resolve definitively.
 - **ipwho.is**: no content/software license beyond its stated free-tier usage terms (rate limit,
-  commercial use allowed, no SLA).
-- **Groq**: the terms governing actual API usage (the "Groq Services Agreement") were not
-  reviewed — only the general website Terms of Use, which explicitly says it doesn't cover cloud
-  API usage.
-- **QCF fonts**: no explicit redistribution license was found for the font files themselves,
-  only the "for Quranic rendering purposes" restriction quoted in this app's own architecture
-  docs — moot for now since this app does not ship or fetch these fonts.
+  commercial use allowed, no SLA). Not re-checked in this pass.
+- **QCF fonts**: still moot for this app specifically, since it ships or fetches none of these font
+  files — but no longer an open licensing question in itself. The license was found and is
+  explicit: font redistribution/commercial use is "not permitted" without permission obtained
+  directly from the rights holder (see above).
