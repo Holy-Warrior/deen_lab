@@ -120,11 +120,14 @@ button, input { font: inherit; }
 
 /* design: a reusable "sync status" affordance, not specific to location -- the icon button's
    color is the at-a-glance signal: grey (loading, or disabled/nothing to sync), red (inactive,
-   showing a fallback rather than the real synced value), green (active, live and synced).
-   data-status is set from whatever state the button's own onclick action would resolve into. */
+   showing a fallback rather than the real synced value), amber (approximate, a real but
+   city-level position derived from the network rather than GPS), green (active, live and
+   synced). data-status is set from whatever state the button's own onclick action would
+   resolve into. */
 .status-icon-button[data-status="loading"],
 .status-icon-button[data-status="unavailable"] { color: var(--app-muted); }
 .status-icon-button[data-status="inactive"] { color: #f87171; }
+.status-icon-button[data-status="approximate"] { color: #fbbf24; }
 .status-icon-button[data-status="active"] { color: var(--app-accent-strong); }
 
 /* ==== app shell (top bar / bottom nav / drawer / popover) ==== */

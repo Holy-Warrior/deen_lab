@@ -1,7 +1,7 @@
 <script lang="ts">
     import { onMount, untrack, type Snippet } from "svelte";
     import {
-        currentCoordinates, placeName, type Coordinates, type LocationStatus,
+        currentCoordinates, networkCoordinates, placeName, type Coordinates, type LocationStatus,
         LocationServicesDisabledError, LocationPermissionDeniedError, LocationUnavailableError
     } from "$lib/services/location";
     import { openLocationSettings, openAppSettings, showToast } from "$lib/services/deviceSettings";
@@ -41,15 +41,22 @@
     let failureMessage = $state("");
     let isLoading = $state(true);
 
-    // design: true only right after a successful currentCoordinates() resolution -- false for
-    // the fallback, a manually picked city, or any failure, since none of those are the
-    // device's real, currently-synced position. Drives the status-icon-button color.
-    let isLive = $state(false);
+    // design: where the coordinates currently in hand actually came from, in descending order of
+    // trust -- a real GPS fix, an approximate city from the IP lookup, or the hard-coded
+    // fallback/a manually picked city. Replaces an earlier boolean, which couldn't express the
+    // middle rung once network location was added.
+    // svelte: the generic form, not `let source: CoordinateSource = $state("fallback")` -- the
+    // annotation-on-the-let form makes svelte-check narrow this to the literal "fallback" and
+    // then flag every later comparison as impossible. See docs/frontend-architecture.md.
+    type CoordinateSource = "gps" | "network" | "fallback";
+    let source = $state<CoordinateSource>("fallback");
 
     let status: LocationStatus = $derived(
         isLoading ? "loading" :
+        source === "gps" ? "active" :
+        source === "network" ? "approximate" :
         failureKind === "unavailable" ? "unavailable" :
-        isLive ? "active" : "inactive"
+        "inactive"
     );
 
     // design: Android stops showing its own permission dialog after a prior denial -- calling
@@ -103,7 +110,7 @@
             if (token !== requestToken) return;
 
             coordinates = resolvedCoordinates;
-            isLive = true;
+            source = "gps";
             permissionRetryAttempted = false;
             onCoordinatesChange?.(coordinates);
             // shown while the reverse-geocode lookup below is in flight, and kept as-is if it
@@ -119,24 +126,46 @@
         } catch (cause) {
             if (token !== requestToken) return;
 
-            // design: fall back to the given location either way, then branch on *why* it failed
-            coordinates = fallback;
-            locationName = `${fallback.name}, ${fallback.country}`;
-            isLive = false;
+            // design: GPS is out, so try the network (IP) lookup before giving up and dropping to
+            // the hard-coded city. An approximate city is still a real place the user is near,
+            // which beats showing them prayer times for the other side of the world.
+            let approximate = false;
+            try {
+                const network = await networkCoordinates();
+                if (token !== requestToken) return;
+
+                coordinates = { latitude: network.latitude, longitude: network.longitude };
+                // the lookup already returns a city/country label, so no reverse-geocode needed
+                locationName = [network.city, network.country].filter(Boolean).join(", ") || "Approximate location";
+                source = "network";
+                approximate = true;
+            } catch {
+                if (token !== requestToken) return;
+
+                coordinates = fallback;
+                locationName = `${fallback.name}, ${fallback.country}`;
+                source = "fallback";
+            }
+
             onCoordinatesChange?.(coordinates);
+
+            // design: the banner still appears even when the network lookup succeeded -- the
+            // underlying problem is real and fixable, and the user deserves to know the times
+            // they're reading are approximate. The wording just softens to match.
+            const usingApproximate = approximate ? " Using an approximate location from your network." : "";
 
             if (cause instanceof LocationServicesDisabledError) {
                 failureKind = "servicesDisabled";
-                failureMessage = "Location is turned off.";
+                failureMessage = `Location is turned off.${usingApproximate}`;
                 permissionRetryAttempted = false;
             } else if (cause instanceof LocationPermissionDeniedError) {
                 failureKind = "permissionDenied";
-                failureMessage = "Location permission was denied.";
+                failureMessage = `Location permission was denied.${usingApproximate}`;
                 // note: permissionRetryAttempted is deliberately NOT reset here -- it needs to
                 // survive repeated permissionDenied outcomes so the button can escalate
             } else if (cause instanceof LocationUnavailableError) {
                 failureKind = "unavailable";
-                failureMessage = "This device doesn't support automatic location.";
+                failureMessage = `This device doesn't support automatic location.${usingApproximate}`;
                 permissionRetryAttempted = false;
             } else {
                 failureKind = "unknown";
@@ -175,7 +204,7 @@
     function selectCity(city: City) {
         coordinates = city;
         locationName = `${city.name}, ${city.country}`;
-        isLive = false;
+        source = "fallback";
         failureKind = null;
         failureMessage = "";
         onCoordinatesChange?.(coordinates);

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import PrayerCardPlaceholder from "$lib/components/home/PrayerCardPlaceholder.svelte";
+    import PrayerCard from "$lib/components/home/PrayerCard.svelte";
     import ToolGrid from "$lib/components/home/ToolGrid.svelte";
 </script>
 
@@ -12,7 +12,7 @@
         <p class="mt-1 text-zinc-400">May your Salah bring you peace and success.</p>
     </div>
 
-    <PrayerCardPlaceholder />
+    <PrayerCard />
 
     <ToolGrid />
 </div>

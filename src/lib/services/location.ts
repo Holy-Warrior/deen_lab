@@ -1,4 +1,5 @@
 import { checkPermissions, requestPermissions, getCurrentPosition } from "@tauri-apps/plugin-geolocation";
+import { invoke } from "@tauri-apps/api/core";
 import { loadCacheThenNetwork } from "./apiCache";
 
 export interface Coordinates {
@@ -18,7 +19,12 @@ export class LocationPermissionDeniedError extends Error {}
 // device's real, synced location right now?" rather than the specific failure reason -- e.g. a
 // status-colored icon button. "loading" and "unavailable" both mean grey/disabled; anything that
 // needs the finer-grained reason can still check DeviceLocation.svelte's internal failure state.
-export type LocationStatus = "loading" | "active" | "inactive" | "unavailable";
+//
+// "approximate" sits between active and inactive: a real, network-derived position from the
+// user's IP (see networkCoordinates below) rather than a GPS fix. It's city-accurate, which is
+// close enough for prayer times and a Qibla bearing, but it is NOT a position fix and gets its
+// own colour so it can never be mistaken for one.
+export type LocationStatus = "loading" | "active" | "approximate" | "inactive" | "unavailable";
 
 // tauri: the geolocation plugin's Android side (Geolocation.kt / GeolocationPlugin.kt) rejects
 // with plain, literal strings -- "Location disabled." / "Location services are disabled." when
@@ -68,6 +74,23 @@ export async function currentCoordinates(): Promise<Coordinates> {
     } catch (cause) {
         throw classify(cause);
     }
+}
+
+export interface NetworkLocation extends Coordinates {
+    city: string;
+    country: string;
+}
+
+// tauri: goes through the `ip_location` Rust command (src-tauri/src/ip_location.rs) rather than
+// a fetch() from here -- the provider URL, response shape, and success/failure semantics all
+// stay in the backend, and it reuses the same shared reqwest client as every other backend
+// request. The command already rejects responses with no usable coordinates, so anything that
+// resolves here is safe to use directly.
+//
+// design: strictly a fallback for when currentCoordinates() has already failed. It resolves to
+// roughly the right city, never a real position fix -- callers must surface it as approximate.
+export async function networkCoordinates(): Promise<NetworkLocation> {
+    return invoke<NetworkLocation>("ip_location");
 }
 
 interface NominatimAddress {

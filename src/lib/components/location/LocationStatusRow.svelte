@@ -1,14 +1,17 @@
 <script lang="ts">
-    import { Locate, LocateFixed, LocateOff } from "@lucide/svelte";
+    import { Globe, Locate, LocateFixed, LocateOff } from "@lucide/svelte";
     import type { LocationStatus } from "$lib/services/location";
 
     // svelte: plain lookup objects instead of a chain of ternaries in the markup -- one place
-    // to see all three states side by side, and TypeScript flags it if a LocationStatus case
-    // is ever added without updating both here
+    // to see all the states side by side, and TypeScript flags it if a LocationStatus case
+    // is ever added without updating both here (which is exactly what caught "approximate")
     const statusIcon: Record<LocationStatus, typeof Locate> = {
         loading: Locate,
         unavailable: LocateOff,
         inactive: Locate,
+        // design: a globe, not a locate pin -- this position came from the network, and the icon
+        // shouldn't imply the device pinned it
+        approximate: Globe,
         active: LocateFixed
     };
 
@@ -16,6 +19,7 @@
         loading: "Finding your location…",
         unavailable: "This device can't provide your location automatically",
         inactive: "Not using your device's location — tap to sync",
+        approximate: "Approximate location from your network — tap to try your device's GPS",
         active: "Using your device's current location — tap to refresh"
     };
 
