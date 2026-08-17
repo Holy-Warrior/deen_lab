@@ -1,6 +1,6 @@
 <script lang="ts">
     import { Dialog } from "bits-ui";
-    import { Menu, X, House, BookOpen, Sparkles } from "@lucide/svelte";
+    import { Menu, X, House, BookOpen, Sparkles, Info } from "@lucide/svelte";
 
     // svelte: local reactive state via the $state rune, no store needed for a single component's open/closed flag
     let open = $state(false);
@@ -9,7 +9,10 @@
     const links = [
         { href: "/", label: "Home", icon: House },
         { href: "/library", label: "Library", icon: BookOpen },
-        { href: "/feature-studio", label: "Studio", icon: Sparkles }
+        { href: "/feature-studio", label: "Studio", icon: Sparkles },
+        // design: About lives in the drawer rather than the bottom nav -- it is read once,
+        // not switched between, so it does not earn a permanent tab
+        { href: "/about", label: "About", icon: Info }
     ];
 </script>
 

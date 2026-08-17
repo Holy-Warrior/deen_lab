@@ -9,6 +9,10 @@ than guessed.
 
 ---
 
+> **Surfaced in the app.** A reader-facing summary of this document ships as the About screen
+> (`src/lib/features/about/AboutPage.svelte`, reachable from the menu drawer). This file stays the
+> researched source of truth; when a source or dependency changes, update both.
+
 ## 1. Data sources and APIs
 
 ### Aladhan API
