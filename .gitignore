@@ -9,3 +9,5 @@ node_modules
 src-tauri/src/groq_config.rs
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+# build/dev-server output redirected to a file so it can be tailed in an editor
+*.log
