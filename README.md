@@ -14,8 +14,9 @@ small local native plugin for Android-specific functionality (see below).
 - [`docs/frontend-architecture.md`](docs/frontend-architecture.md) — the app shell, routing,
   the tool-registry mechanism (how a new tool gets added to the home grid), and the shared
   conventions (error display, cache-then-network data fetching) every feature follows.
-- [`docs/legacy-frontend.md`](docs/legacy-frontend.md) — what the first-pass front-end
-  (`src/discarded/`) did, kept as a reference for ideas worth reusing.
+- [`docs/legacy-frontend.md`](docs/legacy-frontend.md) — what the first-pass front-end did, and
+  which of its ideas were carried into the rebuild. Most of that code has now been deleted as
+  each feature got rebuilt, so this doc is the surviving record of it.
 
 ## Getting started
 
@@ -46,12 +47,13 @@ src/
   routes/                 SvelteKit routes -- thin, just render a feature's page component
   lib/
     components/shell/     top bar, bottom nav, drawer, notifications -- see frontend-architecture.md
-    components/home/      home-tab pieces (prayer card placeholder, tool grid)
+    components/home/      home-tab pieces (next-prayer card, tool grid)
     components/common/    shared UI (ErrorBanner)
     tools/                the tool-registry mechanism (types + glob-based discovery)
     services/             cross-feature helpers (apiCache, deviceSettings)
     features/<name>/      one folder per feature: service.ts, <Name>Page.svelte, tool.ts
-  discarded/               the retired first-pass front-end, kept for reference only
+  discarded/              only the not-yet-rebuilt first-pass features (hadith,
+                            feature-studio) -- everything else deleted, see legacy-frontend.md
 
 src-tauri/
   src/                    main Rust app crate (commands, setup)
