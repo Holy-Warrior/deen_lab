@@ -700,6 +700,7 @@ dependencies = [
  "tauri-plugin-device-settings",
  "tauri-plugin-geolocation",
  "tauri-plugin-opener",
+ "tokio",
 ]
 
 [[package]]

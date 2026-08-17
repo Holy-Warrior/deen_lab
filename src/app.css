@@ -60,6 +60,10 @@ button, input { font: inherit; }
 .button:hover:not(:disabled) { background: var(--app-accent); }
 .button--secondary { border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
 .button--secondary:hover:not(:disabled) { background: var(--app-surface-hover); }
+/* design: the app's only destructive action styling -- red rather than the emerald accent, so a
+   delete never looks like the safe default sitting next to it */
+.button--danger { background: #b91c1c; color: #fee2e2; }
+.button--danger:hover:not(:disabled) { background: #dc2626; }
 .button:disabled { cursor: wait; opacity: 0.65; }
 
 .tool-card {
@@ -249,6 +253,69 @@ button, input { font: inherit; }
 }
 
 .drawer-link:hover { background: var(--app-surface-hover); }
+
+/* design: a generated feature previews full-screen rather than inside a card -- these are meant
+   to be used, not just looked at, and an inline frame on a 380px phone leaves too little room
+   to use one. Global rather than scoped for the same reason .popover-panel below is: the class
+   lands on bits-ui's Dialog.Content, which a component's scoped-CSS hash never reaches. */
+.preview-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 51;
+    display: flex;
+    flex-direction: column;
+    background: var(--app-canvas);
+    /* tauri: keeps the frame's own content clear of the gesture bar */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding-inline: 0.75rem;
+    /* tauri: top inset clears the status bar, same as .drawer-panel */
+    padding-block: calc(0.625rem + env(safe-area-inset-top, 0px)) 0.625rem;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--app-surface);
+}
+
+/* design: a confirmation raised over the full-screen preview, so both of these sit above
+   .preview-panel's z-index rather than alongside .overlay's. Global for the same reason the
+   others here are: the class lands on a bits-ui Content, which scoped CSS never reaches. */
+/* design: the upgrade surface sits above the preview it is changing, so its z-index clears
+   .preview-panel. Global because the class lands on a bits-ui Dialog.Content. */
+.upgrade-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 62;
+    display: flex;
+    flex-direction: column;
+    background: var(--app-canvas);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgb(0 0 0 / 0.7);
+}
+
+.confirm-panel {
+    position: fixed;
+    z-index: 61;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100% - 2.5rem, 22rem);
+    border: 1px solid var(--app-border);
+    border-radius: 0.875rem;
+    background: var(--app-surface);
+    padding: 1.25rem;
+    box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.8);
+}
 
 .popover-panel {
     z-index: 51;

@@ -18,21 +18,41 @@ Two ways to reach native functionality from TypeScript:
 
 ## 1. Tauri commands (`invoke(...)`)
 
-### `build_feature(prompt: string): Promise<FeatureBuildResult>`
+### `build_feature(prompt: string, progress: Channel<BuildProgress>): Promise<FeatureBuildResult>`
 
 Source: [`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs)
 
-Sends `prompt` to Groq (`llama-3.3-70b-versatile` by default) with a system prompt that
-restricts it to generating small, self-contained Islamic-learning HTML mini-tools. Groq is
-asked to reply with strict JSON and the command deserializes it into:
+Sends `prompt` to Groq with a system prompt that restricts it to generating small, self-contained
+Islamic-learning HTML mini-tools. Groq is asked to reply with strict JSON and the command
+deserializes it into:
 
 ```ts
 interface FeatureBuildResult {
   decision: "generate" | "decline";
   title: string;
   message: string;
-  html: string; // complete, self-contained HTML document (no network/script/style refs)
+  html: string; // body-only markup -- NOT a whole document, see below
 }
+```
+
+`html` is **body-only markup**, not a complete document. The model is told Tailwind is already
+loaded and must not link it; the front-end wraps the markup in a document that injects a
+bundled Tailwind runtime plus a restrictive CSP. See
+[`docs/feature-studio.md`](./feature-studio.md) for why the contract is split that way.
+
+Rather than calling one model, it walks `MODEL_CHAIN` (`openai/gpt-oss-120b` →
+`openai/gpt-oss-20b` → `qwen/qwen3.6-27b`), moving on whenever an attempt fails in a way another
+model might survive. Groq's per-minute token allowance is **per model**, so a 429 from one says
+nothing about the next and the chain runs with no delay between models. Only if all three are
+exhausted does it wait (Groq's own retry hint, capped at 45s) and make one more pass.
+
+`progress` is a Tauri `Channel` carrying updates while that happens, so a wait can be explained
+instead of looking like a hang:
+
+```ts
+type BuildProgress =
+  | { kind: "trying"; attempt: number; total: number }
+  | { kind: "waiting"; seconds: number };
 ```
 
 Errors (rejected `Promise`, string message) when:
@@ -41,11 +61,31 @@ Errors (rejected `Promise`, string message) when:
 - `groq_config::API_KEY` is empty — i.e. `src-tauri/src/groq_config.rs` hasn't been created
   from [`groq_config.example.rs`](../src-tauri/src/groq_config.example.rs) with a real key.
   This file is gitignored; every developer/machine needs their own copy.
-- The Groq request fails, returns a non-2xx status, or returns a `decision` outside
-  `"generate" | "decline"`, or `decision: "generate"` with empty `html`.
+- Groq rejects the key (HTTP 401/403). Fatal, not retried — no other model fixes a bad key.
+- Every model in the chain failed on both passes. Reported as one plain sentence.
 
-Because the returned `html` is meant to be rendered (e.g. in a sandboxed `<iframe srcdoc>`),
-treat it as untrusted content on the front-end regardless of the system prompt's constraints.
+### `upgrade_feature(request: string, currentHtml: string, progress: Channel<BuildProgress>): Promise<FeatureBuildResult>`
+
+Source: [`src-tauri/src/lib.rs`](../src-tauri/src/lib.rs)
+
+Asks for a revision of an existing tool. Same return type, same model chain, same error handling
+as `build_feature` — both call the shared `run_chain()` and differ only in their system prompt
+(`system_prompt(Task::Upgrade)`) and user message, which carries the tool's current markup
+alongside the requested change.
+
+The result is a **candidate**, not a commitment: this command never writes anything, and the
+front-end shows the new version running before the user chooses to keep it. See
+[`feature-studio.md`](./feature-studio.md) for the versioning model.
+
+Everything else — rate limits (429/413), a reply cut off by the token budget
+(`finish_reason == "length"`, checked *before* parsing since a truncated reply is invalid JSON),
+Groq rejecting its own JSON, network blips, a `decision` outside `"generate" | "decline"`, or
+`decision: "generate"` with empty `html` — is treated as retryable and moves to the next model
+rather than reaching the user.
+
+Because the returned `html` is rendered in the app, treat it as untrusted content on the
+front-end regardless of the system prompt's constraints — the sandbox and CSP applied in
+`document.ts` are what actually contain it, not the prompt.
 
 ### `api_request(url, method?, headers?, body?, cache: boolean): Promise<unknown>`
 

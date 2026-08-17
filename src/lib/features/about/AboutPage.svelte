@@ -11,7 +11,7 @@
         { name: "UmmahAPI", url: "https://ummahapi.com", use: "Quran text, translation and transliteration; Duas", terms: "Free, no key. Publishes no formal terms." },
         { name: "ipwho.is", url: "https://ipwho.is", use: "Approximate location when GPS is unavailable", terms: "Free tier, no key." },
         { name: "OpenStreetMap Nominatim", url: "https://nominatim.openstreetmap.org", use: "Turning coordinates into a place name", terms: "Data © OpenStreetMap contributors, ODbL." },
-        { name: "Groq", url: "https://groq.com", use: "Feature Studio (optional; needs your own API key)", terms: "Inactive unless a key is configured." }
+        { name: "Groq", url: "https://groq.com", use: "Studio — builds the small tools you describe", terms: "Free plan, using your own API key. Limited use each minute." }
     ];
 
     const frontend = [
@@ -99,6 +99,14 @@
             <p>
                 Quran translations are the work of their respective translators, reproduced as
                 supplied by the source above.
+            </p>
+            <p>
+                Tools you build in <b class="text-zinc-200">Studio</b> are written by an AI model
+                from your description. Nobody reviews them, and they can be wrong — a calculator
+                may use a rule that does not apply to you, and a listed dua may be imperfectly
+                worded. Treat them as a personal aid, and check anything that matters against a
+                source you trust. Each one runs sealed off from the rest of the app, with no
+                access to your data and no connection of its own.
             </p>
         </div>
     </section>

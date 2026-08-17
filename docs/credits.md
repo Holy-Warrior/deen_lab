@@ -158,10 +158,16 @@ than guessed.
 
 ### Groq (AI "Feature Studio")
 
-- **Provides:** Powers an experimental "Feature Studio" tool that generates small, self-contained
-  Islamic-learning HTML mini-tools from a prompt (`src-tauri/src/lib.rs`,
-  `docs/backend-api.md`).
+- **Provides:** Powers the "Studio" tool that generates small, self-contained Islamic-learning
+  HTML mini-tools from a prompt (`src-tauri/src/lib.rs`, `docs/feature-studio.md`).
 - **Base URL:** `https://api.groq.com/openai/v1/chat/completions`.
+- **Models:** a three-model fallback chain — `openai/gpt-oss-20b`, then `openai/gpt-oss-120b`, then
+  `qwen/qwen3.6-27b` — set as `MODEL_CHAIN` in `src-tauri/src/lib.rs` (deliberately
+  version-controlled rather than kept in the gitignored key file). Groq retires models fairly
+  often — the previously configured `llama-3.3-70b-versatile` was decommissioned and no longer
+  appears in `GET /openai/v1/models`. Each model carries its own 8,000 tokens-per-minute free-plan
+  allowance, which is why falling back to another model works rather than just hitting the same
+  wall; see `docs/feature-studio.md` for the measurements behind that choice.
 - **API key:** Required, and **not bundled with the app**. The key lives in
   `src-tauri/src/groq_config.rs`, a file that is `.gitignore`d and must be created locally by
   copying `src-tauri/src/groq_config.example.rs` (which ships with an empty key) and filling in a
@@ -272,6 +278,7 @@ current.
 | `svelte-check` | Type-checking for `.svelte` files | MIT |
 | `tailwindcss` | Utility-first CSS styling | MIT |
 | `@tailwindcss/vite` | Vite integration for Tailwind CSS | MIT |
+| `@tailwindcss/browser` (vendored, not an npm dependency) | Compiles Tailwind classes at runtime inside Studio's sandboxed preview. A copy pinned to 4.3.3 — the same version as `tailwindcss` above — is committed at `static/vendor/tailwind-browser.js` and injected into each generated tool, rather than loaded from a CDN, so generated tools render with no network access. Redistributing it is permitted by its MIT license; the jsDelivr build header identifying the upstream package is left intact in the file. | MIT |
 | `bits-ui` | Headless, accessible UI primitives (dialogs, selects, etc.) | MIT |
 | `@lucide/svelte` | Icon set used throughout the UI | ISC |
 | `@tauri-apps/api` | JS bindings for calling into the Tauri/Rust backend | Apache-2.0 OR MIT |
