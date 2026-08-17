@@ -80,10 +80,6 @@ class _HomeDashboard extends ConsumerWidget {
         return _QuranSummaryCard(
           onOpen: () => _openTab(context, 'quran'),
         );
-      case HomeWidgetType.hadees:
-        return _HadithSummaryCard(
-          onOpen: () => _openTab(context, 'hadees'),
-        );
       case HomeWidgetType.dua:
         return _DuaSummaryCard(
           onOpen: () => _openTab(context, 'dua'),
@@ -315,53 +311,6 @@ class _QuranSummaryCard extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   '${controller.surahs.first.ayahCount} ayahs',
-                  style: theme.textTheme.bodyMedium,
-                ),
-              ],
-            ),
-    );
-  }
-}
-
-class _HadithSummaryCard extends ConsumerWidget {
-  const _HadithSummaryCard({required this.onOpen});
-
-  final VoidCallback onOpen;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final controller = ref.watch(hadithControllerProvider);
-    final theme = Theme.of(context);
-    final totalHadith = controller.collections.fold<int>(
-      0,
-      (sum, item) => sum + item.hadithCount,
-    );
-
-    return _HomeCard(
-      title: 'Hadees',
-      onTap: onOpen,
-      icon: HomeWidgetType.hadees.icon,
-      child: controller.isLoadingCollections
-          ? const _MiniLoading()
-          : controller.collections.isEmpty
-          ? _MiniError(
-              message: controller.loadingError ?? 'Hadith library unavailable',
-            )
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${controller.collections.length} collections',
-                  style: theme.textTheme.labelLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  controller.collections.first.name,
-                  style: theme.textTheme.titleMedium,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$totalHadith hadith available',
                   style: theme.textTheme.bodyMedium,
                 ),
               ],
