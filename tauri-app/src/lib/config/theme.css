@@ -1,0 +1,31 @@
+/*
+ * Front-end config: design tokens grouped by category.
+ *
+ * tailwind: v4 has no tailwind.config.js -- these CSS custom properties ARE the
+ * config, read by plain CSS (app.css) and by Tailwind's arbitrary-value syntax
+ * (e.g. class="mt-[var(--config-features-header-gap)]"). Pure CSS, resolved by
+ * the browser's own cascade -- no JS object to import/read on every render, so
+ * this is the zero-runtime-cost option compared to a TS config module.
+ *
+ * Add new tokens under the category they belong to; start a new category
+ * comment block for anything that doesn't fit an existing one.
+ */
+
+:root {
+    /* -- features: shared tokens for feature pages (Qibla, Sehri & Iftari, ...) -- */
+    --config-features-header-gap: 0.1rem;
+
+    /* -- home: the next-prayer card (see components/home/PrayerCard.svelte) -- */
+    --config-prayer-card-min-height: 12rem;
+    /* darkens the left side, where the text sits, and fades out before the right third so the
+       mosque artwork stays vivid. Tuned against the measured contrast of the seven images --
+       lightening the first two stops will break white text on the Dhuhr/Isha/Maghrib slots. */
+    --config-prayer-card-scrim: linear-gradient(
+        to right,
+        rgb(3 7 18 / 0.78) 0%,
+        rgb(3 7 18 / 0.62) 34%,
+        rgb(3 7 18 / 0.34) 58%,
+        rgb(3 7 18 / 0.06) 80%,
+        rgb(3 7 18 / 0) 100%
+    );
+}

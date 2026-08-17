@@ -1,0 +1,14 @@
+{
+  "recommendations": [
+    "svelte.svelte-vscode",
+    "tauri-apps.tauri-vscode",
+    "rust-lang.rust-analyzer",
+    "mistralai.mistral-vibe-code",
+    "google.geminicodeassist",
+    "openai.chatgpt",
+    "continue.continue",
+    "codeium.codeium",
+    "anthropic.claude-code",
+    "google.gemini-cli-vscode-ide-companion"
+  ]
+}

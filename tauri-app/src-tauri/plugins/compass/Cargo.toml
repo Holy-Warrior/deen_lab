@@ -1,0 +1,21 @@
+[package]
+name = "tauri-plugin-compass"
+version = "0.1.0"
+edition = "2021"
+description = "Streams live device-heading updates from the Android magnetometer/accelerometer (or a gyroscope fallback) for a rotating Qibla compass"
+license = "MIT"
+authors = ["Holy-Warrior"]
+links = "tauri-plugin-compass"
+
+[lib]
+name = "tauri_plugin_compass"
+path = "src/lib.rs"
+
+[dependencies]
+tauri = { version = "2", default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

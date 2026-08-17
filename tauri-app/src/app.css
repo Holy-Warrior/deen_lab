@@ -1,0 +1,357 @@
+@import "tailwindcss";
+@import "./lib/config/theme.css";
+
+:root {
+    color-scheme: dark;
+    font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+    background: #09090b;
+    color: #f4f4f5;
+    --app-canvas: #09090b;
+    --app-surface: #18181b;
+    --app-surface-hover: #27272a;
+    --app-border: #3f3f46;
+    --app-text: #f4f4f5;
+    --app-muted: #a1a1aa;
+    --app-accent: #34d399;
+    --app-accent-strong: #10b981;
+    /* tailwind: CSS custom properties read by both plain CSS below and Tailwind arbitrary values like h-[var(--app-topbar-height)] */
+    --app-topbar-height: 3.75rem;
+    --app-bottomnav-height: 4.5rem;
+    --app-shell-content-gap: 1.5rem;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    min-width: 320px;
+    background: var(--app-canvas);
+    color: var(--app-text);
+}
+
+button, input { font: inherit; }
+
+.app-shell { min-height: 100vh; background: var(--app-canvas); color: var(--app-text); }
+.page-container { width: min(100% - 2rem, 72rem); margin: 0 auto; padding: 2rem 0; }
+.app-header { margin-bottom: 2.5rem; }
+
+.surface { border: 1px solid var(--app-border); border-radius: 0.75rem; background: var(--app-surface); }
+
+.control {
+    min-height: 2.75rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.625rem;
+    background: var(--app-surface);
+    color: var(--app-text);
+    padding: 0.625rem 0.875rem;
+}
+
+.button {
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    padding: 0.625rem 0.875rem;
+    background: var(--app-accent-strong);
+    color: #022c22;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.button:hover:not(:disabled) { background: var(--app-accent); }
+.button--secondary { border-color: var(--app-border); background: var(--app-surface); color: var(--app-text); }
+.button--secondary:hover:not(:disabled) { background: var(--app-surface-hover); }
+/* design: the app's only destructive action styling -- red rather than the emerald accent, so a
+   delete never looks like the safe default sitting next to it */
+.button--danger { background: #b91c1c; color: #fee2e2; }
+.button--danger:hover:not(:disabled) { background: #dc2626; }
+.button:disabled { cursor: wait; opacity: 0.65; }
+
+.tool-card {
+    display: block;
+    border: 1px solid var(--app-border);
+    border-radius: 0.75rem;
+    background: var(--app-surface);
+    color: inherit;
+    padding: 1rem;
+    text-align: left;
+    text-decoration: none;
+    transition: background 150ms ease, border-color 150ms ease;
+}
+
+.tool-card:hover { border-color: var(--app-accent-strong); background: var(--app-surface-hover); }
+.control:focus-visible, .button:focus-visible, .tool-card:focus-visible { outline: 2px solid var(--app-accent); outline-offset: 2px; }
+
+/* svelte: shared by every empty placeholder (prayer card, tool-grid slots) so future real content drops in without a layout/style rewrite */
+.placeholder-slot {
+    display: grid;
+    place-items: center;
+    min-height: 5.5rem;
+    border: 1px dashed var(--app-border);
+    border-radius: 1rem;
+    background: color-mix(in srgb, var(--app-surface) 55%, transparent);
+    color: var(--app-muted);
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-align: center;
+    padding: 1rem;
+}
+
+/* design: app-wide convention for a failed background API refresh -- see ErrorBanner.svelte */
+.error-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem;
+    border: 1px solid color-mix(in srgb, #f87171 45%, var(--app-border));
+    background: color-mix(in srgb, #f87171 12%, var(--app-surface));
+    color: #fecaca;
+    font-size: 0.875rem;
+}
+
+/* design: borderless companion to .error-banner -- an always-visible ongoing-status row
+   (e.g. "which location is this?"), not a failure needing attention. See DeviceLocation.svelte. */
+.location-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block: 0.25rem;
+    color: var(--app-muted);
+    font-size: 0.875rem;
+}
+
+/* design: a reusable "sync status" affordance, not specific to location -- the icon button's
+   color is the at-a-glance signal: grey (loading, or disabled/nothing to sync), red (inactive,
+   showing a fallback rather than the real synced value), amber (approximate, a real but
+   city-level position derived from the network rather than GPS), green (active, live and
+   synced). data-status is set from whatever state the button's own onclick action would
+   resolve into. */
+.status-icon-button[data-status="loading"],
+.status-icon-button[data-status="unavailable"] { color: var(--app-muted); }
+.status-icon-button[data-status="inactive"] { color: #f87171; }
+.status-icon-button[data-status="approximate"] { color: #fbbf24; }
+.status-icon-button[data-status="active"] { color: var(--app-accent-strong); }
+
+/* ==== app shell (top bar / bottom nav / drawer / popover) ==== */
+
+/* tailwind: fixed + grid-cols-[1fr_auto_1fr] centers the title regardless of the two buttons' widths */
+/* tauri: * is box-sizing:border-box, so padding-block-start eats into `height` rather than
+   adding to it -- height is bumped by the same inset so the visible (post-padding) bar still
+   measures --app-topbar-height, with menu/title/bell centered inside that visible area */
+.top-bar {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: 40;
+    height: calc(var(--app-topbar-height) + env(safe-area-inset-top, 0px));
+    padding-block-start: env(safe-area-inset-top, 0px);
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    padding-inline: 0.5rem;
+    background: color-mix(in srgb, var(--app-canvas) 90%, transparent);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--app-border);
+}
+
+.bottom-nav {
+    position: fixed;
+    inset-block-end: 0;
+    inset-inline: 0;
+    z-index: 40;
+    height: calc(var(--app-bottomnav-height) + env(safe-area-inset-bottom, 0px));
+    display: grid;
+    grid-auto-flow: column;
+    background: color-mix(in srgb, var(--app-canvas) 90%, transparent);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid var(--app-border);
+    /* tauri: keeps tabs clear of Android's gesture bar/notch on devices that report a safe-area inset */
+    padding-block-end: env(safe-area-inset-bottom, 0px);
+}
+
+/* sveltekit: content sits between the two fixed bars; heights (incl. safe-area insets) come from the tokens above */
+.shell-main {
+    min-height: 100vh;
+    padding-block:
+        calc(var(--app-topbar-height) + env(safe-area-inset-top, 0px) + var(--app-shell-content-gap))
+        calc(var(--app-bottomnav-height) + env(safe-area-inset-bottom, 0px) + var(--app-shell-content-gap));
+    overflow-y: auto;
+}
+
+/* design: feature pages (Qibla, Sehri & Iftari, ...) sit closer to the top bar than the
+   shell's default content gap -- pulling the page up by the difference means the visible
+   gap above the header always equals --config-features-header-gap, however the shell's own
+   default gap is configured, without every feature page hardcoding a negative margin itself */
+.feature-page {
+    margin-block-start: calc(var(--config-features-header-gap) - var(--app-shell-content-gap));
+}
+
+.icon-button {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--app-text);
+    cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) { background: var(--app-surface-hover); }
+.icon-button:disabled { cursor: not-allowed; opacity: 0.6; }
+
+.nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    color: var(--app-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* svelte: data-active is set from a boolean prop -- true/false render as literal attribute values, so match the string form */
+.nav-tab[data-active="true"] { color: var(--app-accent); }
+
+.overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    background: rgb(0 0 0 / 0.6);
+}
+
+.drawer-panel {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 51;
+    width: min(80vw, 20rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    padding-inline: 1.25rem;
+    /* tauri: full-height panel needs both insets so its title row and footer note clear the status/gesture bars */
+    padding-block: calc(1.5rem + env(safe-area-inset-top, 0px)) calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    background: var(--app-surface);
+    border-right: 1px solid var(--app-border);
+}
+
+.drawer-link {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: 0.625rem;
+    color: var(--app-text);
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.drawer-link:hover { background: var(--app-surface-hover); }
+
+/* design: a generated feature previews full-screen rather than inside a card -- these are meant
+   to be used, not just looked at, and an inline frame on a 380px phone leaves too little room
+   to use one. Global rather than scoped for the same reason .popover-panel below is: the class
+   lands on bits-ui's Dialog.Content, which a component's scoped-CSS hash never reaches. */
+.preview-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 51;
+    display: flex;
+    flex-direction: column;
+    background: var(--app-canvas);
+    /* tauri: keeps the frame's own content clear of the gesture bar */
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.preview-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    padding-inline: 0.75rem;
+    /* tauri: top inset clears the status bar, same as .drawer-panel */
+    padding-block: calc(0.625rem + env(safe-area-inset-top, 0px)) 0.625rem;
+    border-bottom: 1px solid var(--app-border);
+    background: var(--app-surface);
+}
+
+/* design: a confirmation raised over the full-screen preview, so both of these sit above
+   .preview-panel's z-index rather than alongside .overlay's. Global for the same reason the
+   others here are: the class lands on a bits-ui Content, which scoped CSS never reaches. */
+/* design: the upgrade surface sits above the preview it is changing, so its z-index clears
+   .preview-panel. Global because the class lands on a bits-ui Dialog.Content. */
+.upgrade-panel {
+    position: fixed;
+    inset: 0;
+    z-index: 62;
+    display: flex;
+    flex-direction: column;
+    background: var(--app-canvas);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: rgb(0 0 0 / 0.7);
+}
+
+.confirm-panel {
+    position: fixed;
+    z-index: 61;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: min(100% - 2.5rem, 22rem);
+    border: 1px solid var(--app-border);
+    border-radius: 0.875rem;
+    background: var(--app-surface);
+    padding: 1.25rem;
+    box-shadow: 0 24px 48px -24px rgb(0 0 0 / 0.8);
+}
+
+.popover-panel {
+    z-index: 51;
+    width: 16rem;
+    border: 1px solid var(--app-border);
+    border-radius: 0.75rem;
+    background: var(--app-surface);
+    padding: 1rem;
+    box-shadow: 0 20px 40px -20px rgb(0 0 0 / 0.6);
+}
+
+/* svelte: styling for bits-ui's Tabs.List/Trigger lives here (global), not in a feature's own
+   scoped <style> -- a component's scoped-CSS hash only ever lands on elements it renders
+   directly, never inside a child component like Tabs.Trigger, so a scoped rule targeting it
+   would silently never match. Same reason .popover-panel above is global instead of scoped. */
+/* design: display:flex (a block-level box), not inline-flex -- inline-level boxes ignore
+   margin:auto centering, so it has to be block-level for width:fit-content + margin-inline:auto
+   to actually center the pill in its container */
+.view-tabs {
+    display: flex;
+    width: fit-content;
+    margin-inline: auto;
+    gap: 0.375rem;
+    padding: 0.375rem;
+    border-radius: 1rem;
+    background: var(--app-surface);
+    border: 1px solid var(--app-border);
+}
+
+.view-tabs__trigger {
+    padding: 0.75rem 1.75rem;
+    border-radius: 0.75rem;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--app-muted);
+    cursor: pointer;
+}
+
+.view-tabs__trigger[data-state="active"] { background: var(--app-accent-strong); color: #022c22; }
