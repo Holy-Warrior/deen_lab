@@ -700,6 +700,7 @@ dependencies = [
  "tauri-plugin-device-settings",
  "tauri-plugin-geolocation",
  "tauri-plugin-opener",
+ "tauri-plugin-silence-of-salah-engine",
  "tokio",
 ]
 
@@ -3714,6 +3715,18 @@ dependencies = [
  "url",
  "windows",
  "zbus",
+]
+
+[[package]]
+name = "tauri-plugin-silence-of-salah-engine"
+version = "0.1.0"
+dependencies = [
+ "log",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-submit-ml-decision-output"
+description = "Enables the submit_ml_decision_output command without any pre-configured scope."
+commands.allow = ["submit_ml_decision_output"]
+
+[[permission]]
+identifier = "deny-submit-ml-decision-output"
+description = "Denies the submit_ml_decision_output command without any pre-configured scope."
+commands.deny = ["submit_ml_decision_output"]

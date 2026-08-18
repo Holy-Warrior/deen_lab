@@ -1,0 +1,43 @@
+[package]
+name = "tauri-plugin-silence-of-salah-engine"
+version = "0.1.0"
+description = "Detects salah via on-device sensor ML inference and silences the phone automatically. Android-only foreground-service plugin, ported from the silence_of_salah_engine Flutter plugin."
+edition = "2021"
+authors = ["Holy-Warrior"]
+license = "MIT"
+repository = "https://github.com/Holy-Warrior/silence_of_salah_engine"
+links = "tauri-plugin-silence-of-salah-engine"
+rust-version = "1.77"
+
+# This crate only ever contains real functionality on Android - see src/lib.rs.
+# On every other target it still compiles (as an empty crate) so that a shared
+# Cargo.toml / workspace that also builds desktop targets does not break.
+[package.metadata.docs.rs]
+targets = ["aarch64-linux-android"]
+
+[package.metadata.platforms.support]
+windows = { level = "none", notes = "Compiles; every command returns Error::UnsupportedPlatform at runtime." }
+linux = { level = "none", notes = "Compiles; every command returns Error::UnsupportedPlatform at runtime." }
+macos = { level = "none", notes = "Compiles; every command returns Error::UnsupportedPlatform at runtime." }
+android = { level = "full", notes = "Requires a foreground service, exact alarms, sensors and ringer-mode access." }
+ios = { level = "none", notes = "Not implemented - see README. iOS does not expose the APIs this plugin depends on (persistent foreground service, ringer mode, exact background alarms). Compiles; every command returns Error::UnsupportedPlatform at runtime." }
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", default-features = false }
+thiserror = "2"
+log = "0.4"
+
+[dev-dependencies]
+# Enables tauri::test::mock_app()/MockRuntime, used only by desktop.rs's
+# unit tests. Dev-dependencies never propagate to downstream consumers of
+# this crate, so this doesn't affect anyone using the plugin normally.
+# default-features must be disabled here too - Cargo unifies features
+# across [dependencies]/[dev-dependencies] for the same package, so leaving
+# it unset here would still pull default features (including wry/WebView2)
+# into the library build, not just the test binary.
+tauri = { version = "2", default-features = false, features = ["test"] }

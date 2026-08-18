@@ -1,0 +1,18 @@
+"$schema" = "schemas/schema.json"
+
+[[set]]
+identifier = "debug"
+description = """
+Allows the debug-only commands: running the ML model directly
+(`trigger_ml_processing`), feeding a manual prediction into the decision
+engine (`submit_ml_decision_output`), and forcing the ringer mode without
+going through the decision engine (`debug_set_audio_silent`,
+`debug_restore_audio_default`). Mirrors the "ML Debug" / "Audio Debug"
+sections of the original plugin's example app.
+"""
+permissions = [
+    "allow-trigger-ml-processing",
+    "allow-submit-ml-decision-output",
+    "allow-debug-set-audio-silent",
+    "allow-debug-restore-audio-default",
+]

@@ -272,6 +272,53 @@ Sensor fallback chain, decided once per `start()` call:
 
 Permissions granted in `capabilities/mobile.json`: `compass:allow-start`, `compass:allow-stop`.
 
+### `tauri-plugin-silence-of-salah-engine` (Android only, local/vendored)
+
+Source: [`src-tauri/plugins/silence-of-salah-engine/`](../src-tauri/plugins/silence-of-salah-engine/)
+
+Detects salah from on-device motion-sensor ML inference and silences the phone while you pray.
+Unlike `device-settings` and `compass`, this one was not written for this app — it is vendored in
+from the standalone
+[`tauri-plugin-silence-of-salah-engine`](https://github.com/Holy-Warrior/silence_of_salah_engine)
+repo, itself a port of the original Flutter plugin. It is copied in rather than referenced by an
+out-of-tree path so a fresh clone still builds; when the upstream plugin changes, re-copy
+`Cargo.toml`, `build.rs`, `src/`, `android/` and `permissions/` over the top.
+
+It is much bigger than the other two: a foreground service, exact daily alarms, a boot receiver,
+a sensor loop and a 1.5 MB bundled XGBoost model. None of that needs wiring here — the plugin's
+own `AndroidManifest.xml` declares the service, receivers and ten permissions, and Gradle's
+manifest merger folds them into the app automatically.
+
+```ts
+import { scheduleDailyAlarms, engineStatus, stopEngine } from "$lib/features/auto-silent/engine";
+
+await scheduleDailyAlarms([{ id: 1, hour: 5, minute: 9, label: "Fajr" }]);
+const status = await engineStatus();   // serviceRunning, audioState, shutdownDeadlineMillis, ...
+```
+
+Things worth knowing before using it:
+
+- **It emits no events.** There is no channel and no callback — the only way to observe the
+  engine is to poll `get_native_status`. `AutoSilentPage.svelte` polls every three seconds while
+  the page is open, and not at all when it isn't.
+- **`schedule_daily_alarms` replaces the entire alarm list.** There is no incremental add or
+  remove, so callers always send the complete set; an empty list cancels everything.
+- **The plugin owns alarm persistence.** Its `AlarmScheduler` plus a `BOOT_COMPLETED` receiver
+  re-arm alarms after a reboot, so the app does not have to. (The original Flutter app bypassed
+  all of this and built a parallel alarm system; this app deliberately does not.)
+- **Four permissions, all fire-and-forget.** `request_*` opens a system settings screen and
+  resolves immediately — Android reports no answer, so the only way to learn the outcome is to
+  poll `get_permission_status` once the app is visible again.
+- **The `debug` permission set is granted on purpose.** `debug_set_audio_silent` /
+  `debug_restore_audio_default` force the ringer without the ML engine, which is what powers the
+  "Check it works" buttons — otherwise the only way to test the permission chain is to wait for a
+  real prayer.
+
+Permissions granted in `capabilities/mobile.json`: the whole `silence-of-salah-engine:default`
+set (twelve commands) plus `silence-of-salah-engine:debug` (four more). These are permission
+*sets* rather than individual `allow-*` identifiers — the plugin defines them in
+`permissions/default.toml` and `permissions/debug.toml`.
+
 ---
 
 ## 3. Capabilities: `default.json` vs `mobile.json`

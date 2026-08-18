@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-debug-set-audio-silent"
+description = "Enables the debug_set_audio_silent command without any pre-configured scope."
+commands.allow = ["debug_set_audio_silent"]
+
+[[permission]]
+identifier = "deny-debug-set-audio-silent"
+description = "Denies the debug_set_audio_silent command without any pre-configured scope."
+commands.deny = ["debug_set_audio_silent"]

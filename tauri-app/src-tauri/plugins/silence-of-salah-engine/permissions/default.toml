@@ -1,0 +1,28 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """
+Allows the core lifecycle of the silence-of-salah-engine plugin: starting
+and stopping the foreground service, reading its status, managing daily
+alarms, and driving the native permission-request flows.
+
+Does NOT include the `debug-*` commands (`trigger_ml_processing`,
+`submit_ml_decision_output`, `debug_set_audio_silent`,
+`debug_restore_audio_default`) - add the `silence-of-salah-engine:debug`
+permission set separately if your app's UI needs them (see the example app
+in the original repo for a debug-only screen that does).
+"""
+permissions = [
+    "allow-get-platform-version",
+    "allow-start-native-task",
+    "allow-stop-native-task",
+    "allow-get-native-status",
+    "allow-schedule-daily-alarms",
+    "allow-get-scheduled-alarms",
+    "allow-cancel-all-alarms",
+    "allow-get-permission-status",
+    "allow-request-exact-alarm-permission",
+    "allow-request-dnd-access",
+    "allow-request-battery-optimization",
+    "allow-request-notification-permission",
+]
