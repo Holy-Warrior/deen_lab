@@ -66,7 +66,7 @@ src-tauri/
   plugins/                Android-only native plugins -- see backend-api.md
     device-settings/        local: opens system Settings screens, shows a Toast
     compass/                local: streams device heading for Qibla
-    silence-of-salah-engine/  vendored from its own repo: the salah-detection foreground service
+    silence-of-salah-engine/  vendored from its own repo: salah detection and time-based silencing
   capabilities/           default.json (all platforms) + mobile.json (Android-only permissions)
 
 docs/                     see above

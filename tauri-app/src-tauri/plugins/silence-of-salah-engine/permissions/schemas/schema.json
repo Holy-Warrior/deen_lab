@@ -307,6 +307,18 @@
           "markdownDescription": "Denies the cancel_all_alarms command without any pre-configured scope."
         },
         {
+          "description": "Enables the cancel_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-cancel-manual-windows",
+          "markdownDescription": "Enables the cancel_manual_windows command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the cancel_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-cancel-manual-windows",
+          "markdownDescription": "Denies the cancel_manual_windows command without any pre-configured scope."
+        },
+        {
           "description": "Enables the debug_restore_audio_default command without any pre-configured scope.",
           "type": "string",
           "const": "allow-debug-restore-audio-default",
@@ -329,6 +341,30 @@
           "type": "string",
           "const": "deny-debug-set-audio-silent",
           "markdownDescription": "Denies the debug_set_audio_silent command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_engine_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-engine-mode",
+          "markdownDescription": "Enables the get_engine_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_engine_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-engine-mode",
+          "markdownDescription": "Denies the get_engine_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the get_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-get-manual-windows",
+          "markdownDescription": "Enables the get_manual_windows command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the get_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-get-manual-windows",
+          "markdownDescription": "Denies the get_manual_windows command without any pre-configured scope."
         },
         {
           "description": "Enables the get_native_status command without any pre-configured scope.",
@@ -439,6 +475,30 @@
           "markdownDescription": "Denies the schedule_daily_alarms command without any pre-configured scope."
         },
         {
+          "description": "Enables the schedule_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-schedule-manual-windows",
+          "markdownDescription": "Enables the schedule_manual_windows command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the schedule_manual_windows command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-schedule-manual-windows",
+          "markdownDescription": "Denies the schedule_manual_windows command without any pre-configured scope."
+        },
+        {
+          "description": "Enables the set_engine_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-set-engine-mode",
+          "markdownDescription": "Enables the set_engine_mode command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the set_engine_mode command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-set-engine-mode",
+          "markdownDescription": "Denies the set_engine_mode command without any pre-configured scope."
+        },
+        {
           "description": "Enables the start_native_task command without any pre-configured scope.",
           "type": "string",
           "const": "allow-start-native-task",
@@ -493,10 +553,10 @@
           "markdownDescription": "Allows the debug-only commands: running the ML model directly\n(`trigger_ml_processing`), feeding a manual prediction into the decision\nengine (`submit_ml_decision_output`), and forcing the ringer mode without\ngoing through the decision engine (`debug_set_audio_silent`,\n`debug_restore_audio_default`). Mirrors the \"ML Debug\" / \"Audio Debug\"\nsections of the original plugin's example app.\n\n#### This permission set includes:\n\n- `allow-trigger-ml-processing`\n- `allow-submit-ml-decision-output`\n- `allow-debug-set-audio-silent`\n- `allow-debug-restore-audio-default`"
         },
         {
-          "description": "Allows the core lifecycle of the silence-of-salah-engine plugin: starting\nand stopping the foreground service, reading its status, managing daily\nalarms, and driving the native permission-request flows.\n\nDoes NOT include the `debug-*` commands (`trigger_ml_processing`,\n`submit_ml_decision_output`, `debug_set_audio_silent`,\n`debug_restore_audio_default`) - add the `silence-of-salah-engine:debug`\npermission set separately if your app's UI needs them (see the example app\nin the original repo for a debug-only screen that does).\n\n#### This default permission set includes:\n\n- `allow-get-platform-version`\n- `allow-start-native-task`\n- `allow-stop-native-task`\n- `allow-get-native-status`\n- `allow-schedule-daily-alarms`\n- `allow-get-scheduled-alarms`\n- `allow-cancel-all-alarms`\n- `allow-get-permission-status`\n- `allow-request-exact-alarm-permission`\n- `allow-request-dnd-access`\n- `allow-request-battery-optimization`\n- `allow-request-notification-permission`",
+          "description": "Allows the core lifecycle of the silence-of-salah-engine plugin: choosing\nbetween the disabled/manual/ML modes, starting and stopping the foreground\nservice, reading its status, managing the ML wake alarms and the manual\nsilence windows, and driving the native permission-request flows.\n\nDoes NOT include the `debug-*` commands (`trigger_ml_processing`,\n`submit_ml_decision_output`, `debug_set_audio_silent`,\n`debug_restore_audio_default`) - add the `silence-of-salah-engine:debug`\npermission set separately if your app's UI needs them (see the example app\nin the original repo for a debug-only screen that does).\n\n#### This default permission set includes:\n\n- `allow-get-platform-version`\n- `allow-start-native-task`\n- `allow-stop-native-task`\n- `allow-get-native-status`\n- `allow-schedule-daily-alarms`\n- `allow-get-scheduled-alarms`\n- `allow-cancel-all-alarms`\n- `allow-get-engine-mode`\n- `allow-set-engine-mode`\n- `allow-schedule-manual-windows`\n- `allow-get-manual-windows`\n- `allow-cancel-manual-windows`\n- `allow-get-permission-status`\n- `allow-request-exact-alarm-permission`\n- `allow-request-dnd-access`\n- `allow-request-battery-optimization`\n- `allow-request-notification-permission`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Allows the core lifecycle of the silence-of-salah-engine plugin: starting\nand stopping the foreground service, reading its status, managing daily\nalarms, and driving the native permission-request flows.\n\nDoes NOT include the `debug-*` commands (`trigger_ml_processing`,\n`submit_ml_decision_output`, `debug_set_audio_silent`,\n`debug_restore_audio_default`) - add the `silence-of-salah-engine:debug`\npermission set separately if your app's UI needs them (see the example app\nin the original repo for a debug-only screen that does).\n\n#### This default permission set includes:\n\n- `allow-get-platform-version`\n- `allow-start-native-task`\n- `allow-stop-native-task`\n- `allow-get-native-status`\n- `allow-schedule-daily-alarms`\n- `allow-get-scheduled-alarms`\n- `allow-cancel-all-alarms`\n- `allow-get-permission-status`\n- `allow-request-exact-alarm-permission`\n- `allow-request-dnd-access`\n- `allow-request-battery-optimization`\n- `allow-request-notification-permission`"
+          "markdownDescription": "Allows the core lifecycle of the silence-of-salah-engine plugin: choosing\nbetween the disabled/manual/ML modes, starting and stopping the foreground\nservice, reading its status, managing the ML wake alarms and the manual\nsilence windows, and driving the native permission-request flows.\n\nDoes NOT include the `debug-*` commands (`trigger_ml_processing`,\n`submit_ml_decision_output`, `debug_set_audio_silent`,\n`debug_restore_audio_default`) - add the `silence-of-salah-engine:debug`\npermission set separately if your app's UI needs them (see the example app\nin the original repo for a debug-only screen that does).\n\n#### This default permission set includes:\n\n- `allow-get-platform-version`\n- `allow-start-native-task`\n- `allow-stop-native-task`\n- `allow-get-native-status`\n- `allow-schedule-daily-alarms`\n- `allow-get-scheduled-alarms`\n- `allow-cancel-all-alarms`\n- `allow-get-engine-mode`\n- `allow-set-engine-mode`\n- `allow-schedule-manual-windows`\n- `allow-get-manual-windows`\n- `allow-cancel-manual-windows`\n- `allow-get-permission-status`\n- `allow-request-exact-alarm-permission`\n- `allow-request-dnd-access`\n- `allow-request-battery-optimization`\n- `allow-request-notification-permission`"
         }
       ]
     }

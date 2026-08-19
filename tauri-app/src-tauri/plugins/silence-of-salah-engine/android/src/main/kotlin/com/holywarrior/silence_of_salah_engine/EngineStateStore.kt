@@ -2,6 +2,7 @@ package com.holywarrior.silence_of_salah_engine
 
 import android.content.Context
 import com.holywarrior.silence_of_salah_engine.alarm.ScheduledAlarm
+import com.holywarrior.silence_of_salah_engine.alarm.SilenceWindow
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -17,7 +18,23 @@ data class EnginePersistentState(
     val audioState: ManagedAudioState = ManagedAudioState.DEFAULT,
     val hasEnteredSilentOnce: Boolean = false,
     val shutdownDeadlineMillis: Long? = null,
-    val alarms: List<ScheduledAlarm> = emptyList()
+    val alarms: List<ScheduledAlarm> = emptyList(),
+    val mode: EngineMode = EngineMode.DEFAULT,
+    val manualWindows: List<SilenceWindow> = emptyList(),
+    /** Which window opened the silence currently in effect. A label for the UI only. */
+    val activeManualWindowId: Int? = null,
+    /**
+     * When manual mode owes the user their ringer back. Doubles as the marker
+     * for "this silence is manual-owned": ML never sets it, so the overdue
+     * safety net in `ManualScheduleController` can never touch an ML session.
+     */
+    val manualRestoreAtMillis: Long? = null,
+    /**
+     * A mode switch the user asked for while a session was running, to be
+     * applied the moment that session ends. Persisted rather than held in
+     * memory so it survives the app being closed while it waits.
+     */
+    val pendingMode: EngineMode? = null
 )
 
 object EngineStateStore {
@@ -75,6 +92,20 @@ object EngineStateStore {
         }
     }
 
+    fun setMode(context: Context, mode: EngineMode): EnginePersistentState {
+        return update(context) { it.copy(mode = mode) }
+    }
+
+    fun updateManualWindows(context: Context, windows: List<SilenceWindow>): EnginePersistentState {
+        return update(context) { current ->
+            current.copy(
+                manualWindows = windows.sortedWith(
+                    compareBy({ window -> window.hour }, { window -> window.minute }, { window -> window.id })
+                )
+            )
+        }
+    }
+
     fun updateAlarms(context: Context, alarms: List<ScheduledAlarm>): EnginePersistentState {
         return update(context) {
             it.copy(alarms = alarms.sortedWith(compareBy({ alarm -> alarm.hour }, { alarm -> alarm.minute }, { alarm -> alarm.id })))
@@ -97,6 +128,13 @@ object EngineStateStore {
             put("alarms", JSONArray().apply {
                 state.alarms.forEach { put(it.toJson()) }
             })
+            put("mode", state.mode.name)
+            put("manualWindows", JSONArray().apply {
+                state.manualWindows.forEach { put(it.toJson()) }
+            })
+            put("activeManualWindowId", state.activeManualWindowId)
+            put("manualRestoreAtMillis", state.manualRestoreAtMillis)
+            put("pendingMode", state.pendingMode?.name)
         }
     }
 
@@ -115,6 +153,13 @@ object EngineStateStore {
             }
         }
 
+        val manualWindows = buildList {
+            val array = json.optJSONArray("manualWindows") ?: JSONArray()
+            for (index in 0 until array.length()) {
+                add(SilenceWindow.fromJson(array.getJSONObject(index)))
+            }
+        }
+
         return EnginePersistentState(
             recentMlOutputs = outputs.takeLast(Config.ML_BUFFER_SIZE),
             originalRingerMode = json.optInt("originalRingerMode").takeIf { json.has("originalRingerMode") },
@@ -126,7 +171,25 @@ object EngineStateStore {
             shutdownDeadlineMillis = json.optLong("shutdownDeadlineMillis").takeIf {
                 json.has("shutdownDeadlineMillis") && !json.isNull("shutdownDeadlineMillis")
             },
-            alarms = alarms
+            alarms = alarms,
+            // A state file written before manual mode existed has no "mode"
+            // key at all, and must keep behaving exactly as it did: ML.
+            mode = json.optString("mode")
+                .takeIf { it.isNotBlank() }
+                ?.let(EngineMode::fromWire)
+                ?: EngineMode.DEFAULT,
+            manualWindows = manualWindows,
+            activeManualWindowId = json.optInt("activeManualWindowId").takeIf {
+                json.has("activeManualWindowId") && !json.isNull("activeManualWindowId")
+            },
+            manualRestoreAtMillis = json.optLong("manualRestoreAtMillis").takeIf {
+                json.has("manualRestoreAtMillis") && !json.isNull("manualRestoreAtMillis")
+            },
+            // Absent means nothing is queued, which is not the same as the ML
+            // fallback `mode` uses - so this one must not default to a mode.
+            pendingMode = json.optString("pendingMode")
+                .takeIf { it.isNotBlank() }
+                ?.let(EngineMode::fromWire)
         )
     }
 }

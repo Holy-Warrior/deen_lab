@@ -66,12 +66,26 @@ object AlarmScheduler {
     }
 
     fun cancelAll(context: Context) {
+        cancelPendingIntents(context)
+        EngineStateStore.updateAlarms(context, emptyList())
+        EngineLog.i(COMPONENT, "Cancelled all scheduled alarms.")
+    }
+
+    /**
+     * Cancels the pending alarms but keeps the persisted schedule, so leaving
+     * and re-entering ML mode does not make the app re-send everything. Pairs
+     * with [restorePersistedAlarms].
+     */
+    fun disarm(context: Context) {
+        cancelPendingIntents(context)
+        EngineLog.i(COMPONENT, "Disarmed ML wake alarms; schedule kept.")
+    }
+
+    private fun cancelPendingIntents(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         getAlarms(context).forEach { alarm ->
             alarmManager.cancel(createPendingIntent(context, alarm))
         }
-        EngineStateStore.updateAlarms(context, emptyList())
-        EngineLog.i(COMPONENT, "Cancelled all scheduled alarms.")
     }
 
     private fun scheduleExact(context: Context, alarm: ScheduledAlarm) {
@@ -91,6 +105,7 @@ object AlarmScheduler {
     private fun createPendingIntent(context: Context, alarm: ScheduledAlarm): PendingIntent {
         val intent = Intent(context, AlarmReceiver::class.java).apply {
             putExtra(Config.EXTRA_ALARM_ID, alarm.id)
+            putExtra(Config.EXTRA_ALARM_KIND, Config.ALARM_KIND_ML_WAKE)
         }
         return PendingIntent.getBroadcast(
             context,

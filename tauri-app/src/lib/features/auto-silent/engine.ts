@@ -10,6 +10,83 @@ const command = (name: string) => `plugin:silence-of-salah-engine|${name}`;
 /** `default` = the phone's normal ringer. `silent` = the engine has silenced it. */
 export type AudioState = "default" | "silent";
 
+/**
+ * Which of the plugin's two ways of deciding is armed.
+ *
+ * `ml` watches the motion sensors and lets the model decide -- accurate when it works, but it
+ * can miss a prayer or misfire on stillness. `manual` ignores all of that and silences on the
+ * clock for a fixed window. They are mutually exclusive natively: both write the same persisted
+ * audio state, so running them together would mean two owners fighting over the ringer.
+ *
+ * Defaults to `ml` on a device that has never been told otherwise.
+ */
+export type EngineMode = "disabled" | "manual" | "ml";
+
+/**
+ * When a mode switch should take effect.
+ *
+ * Switching tears the outgoing mode down, and if that mode is holding the ringer silent at the
+ * time, tearing it down means the phone starts ringing -- possibly mid-prayer, which is the one
+ * thing this feature exists to prevent. So the caller says what should happen instead.
+ *
+ * `ifIdle` is the default: it refuses rather than interrupting, and hands back the session that
+ * blocked it so the page can ask the user which they would rather do.
+ */
+export type ModeSwitchPolicy = "ifIdle" | "immediate" | "afterCurrentSession";
+
+/** What the engine is busy doing right now. Null when it is idle. */
+export interface ActiveSession {
+    kind: EngineMode;
+    /** The ringer is being held silent at this moment -- the difference between
+     *  "your phone is silent right now" and "Auto Silent is listening". */
+    silencing: boolean;
+    /** Which prayer. Always null in ML mode: nothing records what started the service, and the
+     *  plugin reports nothing rather than guessing. */
+    label: string | null;
+    endsAtMillis: number | null;
+}
+
+export interface ModeStatus {
+    mode: EngineMode;
+    /** A switch waiting for the active session to end. Null when nothing is queued. */
+    pendingMode: EngineMode | null;
+    activeSession: ActiveSession | null;
+}
+
+export interface ModeSwitchOutcome {
+    /** Whether the requested mode is in effect now. */
+    applied: boolean;
+    status: ModeStatus;
+}
+
+/**
+ * One clock-driven silence period for manual mode.
+ *
+ * `hour`/`minute` is the *resolved* start, offset already applied -- the plugin has no location
+ * and no calendar, so it cannot work out when Asr is. That arithmetic stays in `service.ts`,
+ * exactly as it already does for the wake alarms.
+ */
+export interface SilenceWindowInput {
+    /** Defaults to `hour * 100 + minute` natively when omitted. Keep it stable per prayer. */
+    id?: number;
+    hour: number;
+    minute: number;
+    /** How long to stay silent, 1-240. Defaults to 30 natively when omitted. */
+    durationMinutes?: number;
+    label?: string;
+}
+
+export interface SilenceWindow {
+    id: number;
+    hour: number;
+    minute: number;
+    durationMinutes: number;
+    label?: string | null;
+    enabled: boolean;
+    nextTriggerAtMillis: number;
+    repeatDaily: boolean;
+}
+
 export interface ScheduleAlarmInput {
     /** Defaults to `hour * 100 + minute` natively when omitted. */
     id?: number;
@@ -52,10 +129,23 @@ export interface NativeStatus {
      */
     shutdownDeadlineMillis: number | null;
     scheduledAlarms: ScheduledAlarm[];
+    mode: EngineMode;
+    manualWindows: SilenceWindow[];
+    /** Which window opened the silence currently in effect. A label only -- nothing depends on it. */
+    activeManualWindowId: number | null;
+    /** When manual mode will hand the ringer back. Null whenever nothing is silenced. */
+    manualRestoreAtMillis: number | null;
+    pendingMode: EngineMode | null;
+    activeSession: ActiveSession | null;
     permissions: PermissionStatus;
 }
 
-/** Starts the foreground service: sensors, model, and the 100ms inference loop. */
+/**
+ * Starts the foreground service: sensors, model, and the 100ms inference loop.
+ *
+ * Rejects unless the engine is in `ml` mode -- the sensor service and manual mode both own the
+ * same ringer state natively, so the plugin refuses rather than letting them collide.
+ */
 export function startEngine(reason: string): Promise<boolean> {
     return invoke(command("start_native_task"), { payload: { reason } });
 }
@@ -82,6 +172,41 @@ export function scheduleDailyAlarms(alarms: ScheduleAlarmInput[]): Promise<Sched
 
 export function cancelAllAlarms(): Promise<boolean> {
     return invoke(command("cancel_all_alarms"));
+}
+
+export function engineMode(): Promise<ModeStatus> {
+    return invoke(command("get_engine_mode"));
+}
+
+/**
+ * Switches modes. The outgoing one is torn down -- service stopped, alarms cancelled, any
+ * silence it owned undone -- and the incoming one is armed from what the plugin already has
+ * stored. Neither schedule is cleared, so this is a toggle rather than a reset.
+ *
+ * A blocked switch is not a rejection: it resolves with `applied: false` and the session that
+ * blocked it in `status.activeSession`, which is what the page needs to offer "switch now" or
+ * "after this prayer". Re-requesting the mode already in effect cancels a queued switch.
+ */
+export function setEngineMode(
+    mode: EngineMode,
+    policy: ModeSwitchPolicy = "ifIdle"
+): Promise<ModeSwitchOutcome> {
+    return invoke(command("set_engine_mode"), { payload: { mode, policy } });
+}
+
+/**
+ * Replaces every manual silence window with this list, same all-or-nothing contract as
+ * scheduleDailyAlarms. An empty list cancels the lot.
+ *
+ * Scheduling windows does not by itself switch modes -- call setEngineMode("manual") for that.
+ */
+export function scheduleManualWindows(windows: SilenceWindowInput[]): Promise<SilenceWindow[]> {
+    return invoke(command("schedule_manual_windows"), { payload: { windows } });
+}
+
+/** Cancels every window, forgets the schedule, and hands the ringer back. */
+export function cancelManualWindows(): Promise<boolean> {
+    return invoke(command("cancel_manual_windows"));
 }
 
 export function permissionStatus(): Promise<PermissionStatus> {

@@ -51,6 +51,40 @@ pub(crate) async fn cancel_all_alarms<R: Runtime>(app: AppHandle<R>) -> Result<b
 }
 
 #[command]
+pub(crate) async fn get_engine_mode<R: Runtime>(app: AppHandle<R>) -> Result<ModeStatus> {
+    app.silence_of_salah_engine().get_engine_mode()
+}
+
+#[command]
+pub(crate) async fn set_engine_mode<R: Runtime>(
+    app: AppHandle<R>,
+    payload: SetEngineModeRequest,
+) -> Result<ModeSwitchOutcome> {
+    app.silence_of_salah_engine().set_engine_mode(payload)
+}
+
+#[command]
+pub(crate) async fn schedule_manual_windows<R: Runtime>(
+    app: AppHandle<R>,
+    payload: ScheduleManualWindowsRequest,
+) -> Result<Vec<SilenceWindow>> {
+    app.silence_of_salah_engine()
+        .schedule_manual_windows(payload)
+}
+
+#[command]
+pub(crate) async fn get_manual_windows<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<Vec<SilenceWindow>> {
+    app.silence_of_salah_engine().get_manual_windows()
+}
+
+#[command]
+pub(crate) async fn cancel_manual_windows<R: Runtime>(app: AppHandle<R>) -> Result<bool> {
+    app.silence_of_salah_engine().cancel_manual_windows()
+}
+
+#[command]
 pub(crate) async fn trigger_ml_processing<R: Runtime>(
     app: AppHandle<R>,
     payload: TriggerMlProcessingRequest,

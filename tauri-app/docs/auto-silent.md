@@ -82,6 +82,43 @@ which is the only reliable moment to notice a grant. The master toggle stays dis
 - **Live status.** The Flutter UI showed one read-only "service running: true/false" row. This
   shows phase, which prayer it likely woke for, and the restore countdown.
 
+## The time-based mode the plugin now offers
+
+Everything above describes ML mode, which is what this page currently drives. The plugin also
+supports a second, clock-only mode, and the app does not use it yet.
+
+`set_engine_mode` chooses between `disabled`, `manual` and `ml`. In `manual` mode the plugin
+takes a list of silence windows — a start time and a duration each — and silences the phone for
+exactly that period, with no sensors, no model and no foreground service. Two exact alarms per
+window is the whole mechanism.
+
+It exists because detection is the weakest part of this feature. The model can miss a prayer
+outright, and no amount of UI honesty makes that acceptable as someone's only option. A window
+that is merely approximate still beats one that does not fire. The trade is the obvious one:
+manual mode silences the phone whether or not anyone is praying, and it stops on schedule whether
+or not they have finished.
+
+The window start is a resolved wall-clock time, offset already applied — the same division of
+labour the wake alarms already use, because the plugin has no location and no calendar and cannot
+compute prayer times itself. So the offsets editor described above is exactly the input manual
+mode needs; a duration per prayer is the only new thing to collect.
+
+Both schedules survive a mode switch, so the app can send its windows once and let the user flip
+between modes without rebuilding anything.
+
+The switch itself needs a prompt in the UI. Tearing the outgoing mode down restores the ringer,
+and doing that while the engine has the phone silent would make it ring mid-prayer — the exact
+failure this feature exists to prevent. So `setEngineMode` defaults to refusing while a session
+is running and hands back what blocked it (`activeSession`, with a `silencing` flag and, in
+manual mode, the prayer's name). The page should turn that into a choice — switch now, or switch
+when this prayer finishes — and send the answer back as `"immediate"` or `"afterCurrentSession"`.
+A deferred switch is the plugin's problem from then on: it is persisted and applied by whichever
+path ends the session, with no further involvement from the app.
+
+See
+[`backend-api.md`](backend-api.md#tauri-plugin-silence-of-salah-engine-android-only-localvendored)
+for the command list and the restore guarantees.
+
 ## Known limitations
 
 - **Android only.** Every command rejects elsewhere; the page detects that on its first call and
@@ -93,7 +130,7 @@ which is the only reliable moment to notice a grant. The master toggle stays dis
   label only — nothing behavioural depends on it.
 - **Detection is imperfect.** It can miss a prayer, or silence the phone when you were only
   sitting still. The page says this in plain words rather than implying reliability it does not
-  have.
+  have. The plugin's time-based mode is the answer to this, and is not wired into the page yet.
 
 ## The effect wiring, and one trap in it
 

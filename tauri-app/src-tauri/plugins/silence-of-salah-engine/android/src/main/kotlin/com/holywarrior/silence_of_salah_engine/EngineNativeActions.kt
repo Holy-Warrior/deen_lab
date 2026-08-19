@@ -4,7 +4,9 @@ import android.app.Activity
 import android.content.Context
 import android.os.Build
 import com.holywarrior.silence_of_salah_engine.alarm.AlarmScheduler
+import com.holywarrior.silence_of_salah_engine.alarm.ManualScheduleController
 import com.holywarrior.silence_of_salah_engine.alarm.ScheduledAlarm
+import com.holywarrior.silence_of_salah_engine.alarm.SilenceWindow
 import com.holywarrior.silence_of_salah_engine.audio.AudioProfileManager
 import com.holywarrior.silence_of_salah_engine.foreground_service.SilenceOfSalahEngineForegroundService
 import com.holywarrior.silence_of_salah_engine.ml_inference.ModelAssetInstaller
@@ -26,6 +28,14 @@ class EngineNativeActions(
 
     fun startNativeTask(args: Map<*, *>?) {
         EngineLog.d(COMPONENT, "startNativeTask called with args=$args")
+
+        // The sensor service is the ML mode. Letting it run in manual mode would
+        // put two owners on the same persisted audioState, each restoring the
+        // ringer the other just changed.
+        val mode = EngineStateStore.load(context).mode
+        check(mode == EngineMode.ML) {
+            "The detection service only runs in ML mode. Current mode is ${mode.wire()}."
+        }
 
         if (SilenceOfSalahEngineForegroundService.isTaskRunning()) {
             EngineLog.d(COMPONENT, "Task start skipped because a task is already active or pending.")
@@ -54,7 +64,70 @@ class EngineNativeActions(
         ServiceLauncher.stop(context, reason = "tauri")
     }
 
+    fun getEngineMode(): Map<String, Any?> = EngineModeController.status(context)
+
+    fun setEngineMode(rawMode: String?, rawPolicy: String?): Map<String, Any?> {
+        return EngineModeController.request(
+            context,
+            EngineMode.fromWire(rawMode),
+            ModeSwitchPolicy.fromWire(rawPolicy)
+        )
+    }
+
+    fun scheduleManualWindows(rawWindows: List<Map<String, Any?>>): List<Map<String, Any?>> {
+        val windows = rawWindows.mapIndexed { index, rawWindow ->
+            val hour = (rawWindow["hour"] as? Number)?.toInt()
+                ?: throw IllegalArgumentException("Window[$index] is missing a valid hour.")
+            val minute = (rawWindow["minute"] as? Number)?.toInt()
+                ?: throw IllegalArgumentException("Window[$index] is missing a valid minute.")
+            val durationMinutes = (rawWindow["durationMinutes"] as? Number)?.toInt()
+                ?: Config.MANUAL_WINDOW_DEFAULT_MINUTES
+            val id = (rawWindow["id"] as? Number)?.toInt() ?: (hour * 100 + minute)
+
+            require(hour in 0..23) { "Window[$index] hour must be between 0 and 23." }
+            require(minute in 0..59) { "Window[$index] minute must be between 0 and 59." }
+            require(id in 0..Config.MAX_ALARM_ID) {
+                "Window[$index] id must be between 0 and ${Config.MAX_ALARM_ID}."
+            }
+            require(durationMinutes in 1..Config.MANUAL_WINDOW_MAX_MINUTES) {
+                "Window[$index] durationMinutes must be between 1 and ${Config.MANUAL_WINDOW_MAX_MINUTES}."
+            }
+
+            SilenceWindow(
+                id = id,
+                hour = hour,
+                minute = minute,
+                durationMinutes = durationMinutes,
+                label = rawWindow["label"] as? String,
+                enabled = rawWindow["enabled"] as? Boolean ?: true
+            )
+        }
+
+        val duplicateIds = windows.groupBy { it.id }.filterValues { it.size > 1 }.keys
+        require(duplicateIds.isEmpty()) {
+            "Window ids must be unique. Duplicates: ${duplicateIds.joinToString(", ")}"
+        }
+
+        return ManualScheduleController.scheduleWindows(context, windows).map { it.toMap() }
+    }
+
+    fun getManualWindows(): List<Map<String, Any?>> {
+        return ManualScheduleController.getWindows(context).map { it.toMap() }
+    }
+
+    fun cancelManualWindows() {
+        ManualScheduleController.cancelAll(context)
+    }
+
     fun getNativeStatus(): Map<String, Any?> {
+        // Reading status is the most reliable moment to notice that a manual
+        // silence was stranded (see ManualScheduleController), because it is
+        // what the app calls the instant the user opens the page.
+        ManualScheduleController.enforceOverdueRestore(context)
+        // Catch-up for a deferred switch whose session ended without either of
+        // the usual choke points firing. A no-op unless one is genuinely queued.
+        EngineModeController.applyPendingIfAny(context)
+
         val persistentState = EngineStateStore.load(context)
         return mapOf(
             "platformVersion" to getPlatformVersion(),
@@ -68,6 +141,12 @@ class EngineNativeActions(
             "originalRingerMode" to persistentState.originalRingerMode,
             "shutdownDeadlineMillis" to persistentState.shutdownDeadlineMillis,
             "scheduledAlarms" to AlarmScheduler.getAlarms(context).map { it.toMap() },
+            "mode" to persistentState.mode.wire(),
+            "pendingMode" to persistentState.pendingMode?.wire(),
+            "activeSession" to EngineModeController.activeSession(context)?.toMap(),
+            "manualWindows" to persistentState.manualWindows.map { it.toMap() },
+            "activeManualWindowId" to persistentState.activeManualWindowId,
+            "manualRestoreAtMillis" to persistentState.manualRestoreAtMillis,
             "permissions" to getPermissionStatus()
         )
     }
@@ -81,6 +160,9 @@ class EngineNativeActions(
             val id = (rawAlarm["id"] as? Number)?.toInt() ?: (hour * 100 + minute)
             require(hour in 0..23) { "Alarm[$index] hour must be between 0 and 23." }
             require(minute in 0..59) { "Alarm[$index] minute must be between 0 and 59." }
+            require(id in 0..Config.MAX_ALARM_ID) {
+                "Alarm[$index] id must be between 0 and ${Config.MAX_ALARM_ID}."
+            }
             ScheduledAlarm(
                 id = id,
                 hour = hour,

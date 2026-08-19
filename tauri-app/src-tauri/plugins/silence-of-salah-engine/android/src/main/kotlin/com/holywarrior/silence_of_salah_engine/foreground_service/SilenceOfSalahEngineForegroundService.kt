@@ -3,8 +3,11 @@ package com.holywarrior.silence_of_salah_engine.foreground_service
 import android.app.Service
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import com.holywarrior.silence_of_salah_engine.Config
+import com.holywarrior.silence_of_salah_engine.EngineModeController
 import com.holywarrior.silence_of_salah_engine.EngineLog
 import com.holywarrior.silence_of_salah_engine.ml_inference.ModelAssetInstaller
 import com.holywarrior.silence_of_salah_engine.sensors.SensorsManager
@@ -81,6 +84,12 @@ class SilenceOfSalahEngineForegroundService : Service() {
         controller?.handleServiceDestroy()
         controller = null
         super.onDestroy()
+
+        // An ML session just ended, so a mode switch the user deferred can go
+        // ahead. Posted rather than run inline: applying it inspects whether the
+        // service is still running, and inline that answer would still be yes.
+        val app = applicationContext
+        Handler(Looper.getMainLooper()).post { EngineModeController.applyPendingIfAny(app) }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null

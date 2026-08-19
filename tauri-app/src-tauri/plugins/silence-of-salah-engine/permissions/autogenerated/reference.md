@@ -1,8 +1,9 @@
 ## Default Permission
 
-Allows the core lifecycle of the silence-of-salah-engine plugin: starting
-and stopping the foreground service, reading its status, managing daily
-alarms, and driving the native permission-request flows.
+Allows the core lifecycle of the silence-of-salah-engine plugin: choosing
+between the disabled/manual/ML modes, starting and stopping the foreground
+service, reading its status, managing the ML wake alarms and the manual
+silence windows, and driving the native permission-request flows.
 
 Does NOT include the `debug-*` commands (`trigger_ml_processing`,
 `submit_ml_decision_output`, `debug_set_audio_silent`,
@@ -19,6 +20,11 @@ in the original repo for a debug-only screen that does).
 - `allow-schedule-daily-alarms`
 - `allow-get-scheduled-alarms`
 - `allow-cancel-all-alarms`
+- `allow-get-engine-mode`
+- `allow-set-engine-mode`
+- `allow-schedule-manual-windows`
+- `allow-get-manual-windows`
+- `allow-cancel-manual-windows`
 - `allow-get-permission-status`
 - `allow-request-exact-alarm-permission`
 - `allow-request-dnd-access`
@@ -56,6 +62,32 @@ Enables the cancel_all_alarms command without any pre-configured scope.
 <td>
 
 Denies the cancel_all_alarms command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-cancel-manual-windows`
+
+</td>
+<td>
+
+Enables the cancel_manual_windows command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-cancel-manual-windows`
+
+</td>
+<td>
+
+Denies the cancel_manual_windows command without any pre-configured scope.
 
 </td>
 </tr>
@@ -108,6 +140,58 @@ Enables the debug_set_audio_silent command without any pre-configured scope.
 <td>
 
 Denies the debug_set_audio_silent command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-get-engine-mode`
+
+</td>
+<td>
+
+Enables the get_engine_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-get-engine-mode`
+
+</td>
+<td>
+
+Denies the get_engine_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-get-manual-windows`
+
+</td>
+<td>
+
+Enables the get_manual_windows command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-get-manual-windows`
+
+</td>
+<td>
+
+Denies the get_manual_windows command without any pre-configured scope.
 
 </td>
 </tr>
@@ -342,6 +426,58 @@ Enables the schedule_daily_alarms command without any pre-configured scope.
 <td>
 
 Denies the schedule_daily_alarms command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-schedule-manual-windows`
+
+</td>
+<td>
+
+Enables the schedule_manual_windows command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-schedule-manual-windows`
+
+</td>
+<td>
+
+Denies the schedule_manual_windows command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-set-engine-mode`
+
+</td>
+<td>
+
+Enables the set_engine_mode command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-set-engine-mode`
+
+</td>
+<td>
+
+Denies the set_engine_mode command without any pre-configured scope.
 
 </td>
 </tr>

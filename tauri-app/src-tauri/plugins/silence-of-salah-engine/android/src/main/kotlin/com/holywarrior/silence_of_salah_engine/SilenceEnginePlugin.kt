@@ -31,6 +31,27 @@ class ScheduleDailyAlarmsArgs {
 }
 
 @InvokeArg
+class SetEngineModeArgs {
+    var mode: String? = null
+    var policy: String? = null
+}
+
+@InvokeArg
+class SilenceWindowArg {
+    var id: Int? = null
+    var hour: Int = 0
+    var minute: Int = 0
+    var durationMinutes: Int? = null
+    var label: String? = null
+    var enabled: Boolean? = null
+}
+
+@InvokeArg
+class ScheduleManualWindowsArgs {
+    var windows: List<SilenceWindowArg> = emptyList()
+}
+
+@InvokeArg
 class TriggerMlProcessingArgs {
     var features: List<Double> = emptyList()
 }
@@ -107,6 +128,57 @@ class SilenceEnginePlugin(private val activity: Activity) : Plugin(activity) {
             actions.scheduleDailyAlarms(rawAlarms)
         }.onSuccess { invoke.resolveObject(it) }
             .onFailure { invoke.reject(it.message, "SCHEDULE_ALARMS_ERROR", it as? Exception) }
+    }
+
+    @Command
+    fun getEngineMode(invoke: Invoke) {
+        runCatching { actions.getEngineMode() }
+            .onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "GET_MODE_ERROR", it as? Exception) }
+    }
+
+    @Command
+    fun setEngineMode(invoke: Invoke) {
+        runCatching {
+            val args = invoke.parseArgs(SetEngineModeArgs::class.java)
+            actions.setEngineMode(args.mode, args.policy)
+        }.onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "SET_MODE_ERROR", it as? Exception) }
+    }
+
+    @Command
+    fun scheduleManualWindows(invoke: Invoke) {
+        runCatching {
+            val args = invoke.parseArgs(ScheduleManualWindowsArgs::class.java)
+            val rawWindows = args.windows.map { window ->
+                mapOf(
+                    "id" to window.id,
+                    "hour" to window.hour,
+                    "minute" to window.minute,
+                    "durationMinutes" to window.durationMinutes,
+                    "label" to window.label,
+                    "enabled" to window.enabled
+                )
+            }
+            actions.scheduleManualWindows(rawWindows)
+        }.onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "SCHEDULE_WINDOWS_ERROR", it as? Exception) }
+    }
+
+    @Command
+    fun getManualWindows(invoke: Invoke) {
+        runCatching { actions.getManualWindows() }
+            .onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "GET_WINDOWS_ERROR", it as? Exception) }
+    }
+
+    @Command
+    fun cancelManualWindows(invoke: Invoke) {
+        runCatching {
+            actions.cancelManualWindows()
+            true
+        }.onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "CANCEL_WINDOWS_ERROR", it as? Exception) }
     }
 
     @Command

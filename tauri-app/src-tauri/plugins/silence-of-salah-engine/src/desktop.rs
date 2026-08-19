@@ -62,6 +62,29 @@ impl<R: Runtime> SilenceOfSalahEngine<R> {
         Self::unsupported()
     }
 
+    pub fn get_engine_mode(&self) -> Result<ModeStatus> {
+        Self::unsupported()
+    }
+
+    pub fn set_engine_mode(&self, _payload: SetEngineModeRequest) -> Result<ModeSwitchOutcome> {
+        Self::unsupported()
+    }
+
+    pub fn schedule_manual_windows(
+        &self,
+        _payload: ScheduleManualWindowsRequest,
+    ) -> Result<Vec<SilenceWindow>> {
+        Self::unsupported()
+    }
+
+    pub fn get_manual_windows(&self) -> Result<Vec<SilenceWindow>> {
+        Self::unsupported()
+    }
+
+    pub fn cancel_manual_windows(&self) -> Result<bool> {
+        Self::unsupported()
+    }
+
     pub fn trigger_ml_processing(
         &self,
         _payload: TriggerMlProcessingRequest,
@@ -124,6 +147,9 @@ mod tests {
         assert!(engine().get_native_status().is_err());
         assert!(engine().get_scheduled_alarms().is_err());
         assert!(engine().cancel_all_alarms().is_err());
+        assert!(engine().get_engine_mode().is_err());
+        assert!(engine().get_manual_windows().is_err());
+        assert!(engine().cancel_manual_windows().is_err());
         assert!(engine().get_permission_status().is_err());
         assert!(engine().request_exact_alarm_permission().is_err());
         assert!(engine().request_dnd_access().is_err());
@@ -146,6 +172,15 @@ mod tests {
             .is_err());
         assert!(engine()
             .submit_ml_decision_output(SubmitMlDecisionRequest { value: true })
+            .is_err());
+        assert!(engine()
+            .set_engine_mode(SetEngineModeRequest {
+                mode: EngineMode::Manual,
+                policy: ModeSwitchPolicy::Immediate
+            })
+            .is_err());
+        assert!(engine()
+            .schedule_manual_windows(ScheduleManualWindowsRequest { windows: vec![] })
             .is_err());
     }
 

@@ -68,6 +68,39 @@ impl<R: Runtime> SilenceOfSalahEngine<R> {
             .map_err(Into::into)
     }
 
+    pub fn get_engine_mode(&self) -> Result<ModeStatus> {
+        self.0
+            .run_mobile_plugin("getEngineMode", ())
+            .map_err(Into::into)
+    }
+
+    pub fn set_engine_mode(&self, payload: SetEngineModeRequest) -> Result<ModeSwitchOutcome> {
+        self.0
+            .run_mobile_plugin("setEngineMode", payload)
+            .map_err(Into::into)
+    }
+
+    pub fn schedule_manual_windows(
+        &self,
+        payload: ScheduleManualWindowsRequest,
+    ) -> Result<Vec<SilenceWindow>> {
+        self.0
+            .run_mobile_plugin("scheduleManualWindows", payload)
+            .map_err(Into::into)
+    }
+
+    pub fn get_manual_windows(&self) -> Result<Vec<SilenceWindow>> {
+        self.0
+            .run_mobile_plugin("getManualWindows", ())
+            .map_err(Into::into)
+    }
+
+    pub fn cancel_manual_windows(&self) -> Result<bool> {
+        self.0
+            .run_mobile_plugin("cancelManualWindows", ())
+            .map_err(Into::into)
+    }
+
     pub fn trigger_ml_processing(
         &self,
         payload: TriggerMlProcessingRequest,
