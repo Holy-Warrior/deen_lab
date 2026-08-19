@@ -2,21 +2,26 @@
     import { onMount, untrack } from "svelte";
     import { pushState } from "$app/navigation";
     import { page } from "$app/state";
-    import { BellOff, BellRing, ChevronRight, Ear, Minus, Plus, ShieldCheck } from "@lucide/svelte";
+    import { BellOff, BellRing, ChevronRight, Clock, Ear, Minus, Plus, ShieldCheck } from "@lucide/svelte";
     import ErrorBanner from "$lib/components/common/ErrorBanner.svelte";
     import DeviceLocation from "$lib/components/location/DeviceLocation.svelte";
     import { fallbackLocation } from "$lib/components/location/cities";
     import type { Coordinates } from "$lib/services/location";
     import { prayerTimesService, type PrayerDay } from "$lib/features/prayer-times/service";
-    import OffsetsEditor from "./OffsetsEditor.svelte";
+    import ModeSwitchDialog from "./ModeSwitchDialog.svelte";
     import PermissionChecklist from "./PermissionChecklist.svelte";
+    import TimingsEditor from "./TimingsEditor.svelte";
     import {
-        cancelAllAlarms, engineStatus, forceRestore, forceSilent, permissionStatus,
+        engineStatus, forceRestore, forceSilent, permissionStatus,
         requestBatteryOptimization, requestDnd, requestExactAlarm, requestNotifications,
-        scheduleDailyAlarms, startEngine, stopEngine,
+        scheduleDailyAlarms, scheduleManualWindows, setEngineMode, startEngine, stopEngine,
+        type ActiveSession, type EngineMode, type ModeSwitchPolicy,
         type NativeStatus, type PermissionStatus
     } from "./engine";
-    import { alarmsFor, formatClock, formatCountdown, likelyPrayerLabel, planWakes } from "./service";
+    import {
+        alarmsFor, formatClock, formatCountdown, formatDuration, likelyPrayerLabel,
+        planWakes, planWindows, windowsFor
+    } from "./service";
     import {
         leadMinutesRange, loadSettings, saveSettings, silencedPrayers,
         type AutoSilentSettings, type SilencedPrayer
@@ -49,41 +54,67 @@
     let busy = $state(false);
     let now = $state(new Date());
 
-    // sveltekit: the offsets editor is a sub-view of this same route rather than its own page,
+    /** The switch the user asked for, waiting on their answer to the dialog. */
+    let blockedTarget = $state<EngineMode | null>(null);
+    let blockingSession = $state<ActiveSession | null>(null);
+    let switchDialogOpen = $state(false);
+
+    // sveltekit: the timings editor is a sub-view of this same route rather than its own page,
     // so it goes in page.state via shallow routing -- that puts a real entry in the WebView's
     // history and makes Android's hardware back button close it, which plain $state would not.
-    let editingOffsets = $derived(Boolean((page.state as { editingOffsets?: boolean }).editingOffsets));
+    let editingTimings = $derived(Boolean((page.state as { editingTimings?: boolean }).editingTimings));
+
+    /**
+     * The mode is read from the plugin, never stored here.
+     *
+     * It is the plugin that acts on the mode while this app is closed -- alarms fire, the boot
+     * receiver re-arms, a deferred switch lands when a prayer ends -- so a second copy in
+     * localStorage could only ever drift out of step with the thing actually doing the work.
+     */
+    let mode = $derived<EngineMode>(status?.mode ?? "disabled");
+    /** A switch waiting for the running session to finish. Null when nothing is queued. */
+    let queuedMode = $derived<EngineMode | null>(status?.pendingMode ?? null);
+    let byTime = $derived(mode === "manual");
 
     let wakes = $derived(today ? planWakes(today, settings) : []);
+    let windows = $derived(today ? planWindows(today, settings) : []);
     let enabledCount = $derived(silencedPrayers.filter((id) => settings.prayers[id]).length);
 
     let prayerTimes = $derived(
         Object.fromEntries(wakes.map((wake) => [wake.prayer, wake.prayerAt]))
     ) as Partial<Record<SilencedPrayer, Date>>;
 
-    let nextWake = $derived(
-        wakes
-            .map((wake) => {
-                // wakes are today's clock times; anything already past belongs to tomorrow
-                const at = wake.wakeAt.getTime() > now.getTime()
-                    ? wake.wakeAt
-                    : new Date(wake.wakeAt.getTime() + 24 * 60 * 60_000);
-                return { ...wake, at };
-            })
-            .sort((left, right) => left.at.getTime() - right.at.getTime())[0] ?? null
-    );
+    /** Anything already past today belongs to tomorrow, since both plans repeat daily. */
+    function soonest<T extends { at: Date }>(entries: T[]): T | null {
+        return entries
+            .map((entry) => ({
+                ...entry,
+                at: entry.at.getTime() > now.getTime()
+                    ? entry.at
+                    : new Date(entry.at.getTime() + 24 * 60 * 60_000)
+            }))
+            .sort((left, right) => left.at.getTime() - right.at.getTime())[0] ?? null;
+    }
+
+    let nextWake = $derived(soonest(wakes.map((wake) => ({ ...wake, at: wake.wakeAt }))));
+    let nextWindow = $derived(soonest(windows.map((window) => ({ ...window, at: window.startAt }))));
 
     let isSilenced = $derived(status?.audioState === "silent");
     let isListening = $derived(Boolean(status?.serviceRunning));
+    /** Detection only: the ten-minute grace period before the service gives up and stops. */
     let countdown = $derived(
         status?.shutdownDeadlineMillis ? status.shutdownDeadlineMillis - now.getTime() : null
+    );
+    /** Time mode only: the fixed moment the ringer comes back. */
+    let restoreAt = $derived(
+        status?.manualRestoreAtMillis ? new Date(status.manualRestoreAtMillis) : null
     );
 
     let phase = $derived(
         unsupported ? "unsupported"
         : isSilenced ? "silenced"
         : isListening ? "listening"
-        : settings.enabled && permissions?.allGranted ? "armed"
+        : mode !== "disabled" && permissions?.allGranted ? "armed"
         : "off"
     );
 
@@ -94,6 +125,14 @@
         armed: "Ready",
         off: "Off"
     };
+
+    const modeNames: Record<EngineMode, string> = {
+        disabled: "Off",
+        manual: "By time",
+        ml: "Detection"
+    };
+
+    const modeOptions: EngineMode[] = ["disabled", "manual", "ml"];
 
     function persist() {
         saveSettings(settings);
@@ -156,31 +195,35 @@
     }
 
     /**
-     * Pushes the current plan to the native alarm list, unconditionally.
+     * Pushes one mode's plan to the plugin, unconditionally.
      *
-     * It used to skip the write when `status.scheduledAlarms` already matched the plan, which
+     * The write used to be skipped when `status.scheduledAlarms` already matched the plan, which
      * seemed like a harmless optimisation and was not. That list is the plugin's own persisted
      * record, not a live query of AlarmManager, and Android silently cancels every one of an
      * app's alarms when it is force-stopped. The record therefore kept claiming five alarms
      * existed while AlarmManager held none, the comparison passed, nothing was rewritten, and the
      * page cheerfully reported "Ready" for a feature that could never fire. Verified on a device.
      *
-     * Re-arming five exact alarms costs nothing, and `planSignature` already stops this running
-     * on every render, so writing every time is both cheaper to reason about and self-healing.
+     * Re-arming is cheap, `planSignature` already stops this running on every render, and writing
+     * every time makes the whole thing self-healing: opening the page repairs it.
      */
-    async function syncAlarms() {
-        if (unsupported || !today) return;
+    async function pushSchedule(forMode: EngineMode) {
+        if (forMode === "ml") await scheduleDailyAlarms(alarmsFor(wakes));
+        else if (forMode === "manual") await scheduleManualWindows(windowsFor(windows));
+    }
+
+    async function syncSchedule() {
+        if (unsupported || !today || !permissions?.allGranted) return;
 
         try {
-            if (!settings.enabled || !permissions?.allGranted) {
-                await cancelAllAlarms();
-                return;
-            }
-
-            await scheduleDailyAlarms(alarmsFor(wakes));
+            await pushSchedule(mode);
+            // A queued switch arms itself from whatever the plugin has stored, which for a mode
+            // the user has never used is nothing at all. Sending its plan now means the switch
+            // has something to arm whenever it lands, even if the app is closed by then.
+            if (queuedMode && queuedMode !== mode) await pushSchedule(queuedMode);
             await refreshStatus();
         } catch (cause) {
-            handleFailure(cause, "Could not schedule the prayer alarms.");
+            handleFailure(cause, "Could not save the schedule.");
         }
     }
 
@@ -211,6 +254,51 @@
         }
     }
 
+    /**
+     * Asks the plugin to change mode, and deals with it saying no.
+     *
+     * The default `ifIdle` policy refuses while the engine has the phone silent, because
+     * switching tears the outgoing mode down and that would turn the ringer back on -- quite
+     * possibly mid-prayer. The refusal comes back carrying the session that caused it, which is
+     * what the dialog needs in order to offer a real choice rather than a shrug.
+     */
+    async function requestMode(next: EngineMode, policy: ModeSwitchPolicy = "ifIdle") {
+        busy = true;
+        actionError = "";
+        try {
+            const outcome = await setEngineMode(next, policy);
+            if (!outcome.applied && outcome.status.activeSession && policy === "ifIdle") {
+                blockedTarget = next;
+                blockingSession = outcome.status.activeSession;
+                switchDialogOpen = true;
+            }
+        } catch (cause) {
+            const message = messageFrom(cause, "Could not change the mode.");
+            if (isUnsupported(message)) unsupported = true;
+            else actionError = explain(message);
+        } finally {
+            busy = false;
+            await refreshStatus();
+            // the schedule has to go out after the mode is actually in effect, since which plan
+            // gets pushed depends on it
+            await syncSchedule();
+        }
+    }
+
+    function chooseMode(next: EngineMode) {
+        // re-picking the mode already running is how a queued switch gets cancelled, so that
+        // case still has to reach the plugin rather than being short-circuited here
+        if (next === mode && !queuedMode) return;
+        void requestMode(next);
+    }
+
+    function resolveSwitch(policy: ModeSwitchPolicy) {
+        const target = blockedTarget;
+        blockedTarget = null;
+        blockingSession = null;
+        if (target) void requestMode(target, policy);
+    }
+
     const requests = {
         notifications: requestNotifications,
         exactAlarm: requestExactAlarm,
@@ -227,16 +315,10 @@
         void run(requests[which], "Could not open that settings screen.");
     }
 
-    async function toggleEnabled(value: boolean) {
-        settings.enabled = value;
-        persist();
-        await syncAlarms();
-    }
-
     function togglePrayer(prayer: SilencedPrayer, value: boolean) {
         settings.prayers[prayer] = value;
         persist();
-        void syncAlarms();
+        void syncSchedule();
     }
 
     function nudgeLead(by: number) {
@@ -244,20 +326,45 @@
             leadMinutesRange.max, Math.max(leadMinutesRange.min, settings.leadMinutes + by)
         );
         persist();
-        void syncAlarms();
+        void syncSchedule();
     }
 
     function setOffset(prayer: SilencedPrayer, minutes: number) {
         settings.offsets[prayer] = minutes;
         persist();
-        void syncAlarms();
+        void syncSchedule();
+    }
+
+    function setDuration(prayer: SilencedPrayer, minutes: number) {
+        settings.durations[prayer] = minutes;
+        persist();
+        void syncSchedule();
+    }
+
+    /**
+     * The plugin defaults to detection mode so that callers written before modes existed keep
+     * working. That is the wrong default to inherit here -- a feature that silences your phone
+     * should not arm itself before anyone has asked it to -- so the first run turns it off.
+     */
+    async function bootstrap() {
+        await refreshStatus();
+        if (unsupported || settings.initialised) return;
+
+        try {
+            await setEngineMode("disabled", "immediate");
+            settings.initialised = true;
+            persist();
+            await refreshStatus();
+        } catch (cause) {
+            handleFailure(cause, "Could not set up the engine.");
+        }
     }
 
     onMount(() => {
-        void refreshStatus();
+        void bootstrap();
 
         // design: one second, because the shutdown countdown is displayed in mm:ss. This also
-        // re-derives `nextWake`, so the "next at" line rolls over on its own at midnight.
+        // re-derives the "next at" lines, so they roll over on their own at midnight.
         const tick = setInterval(() => (now = new Date()), 1000);
         // the engine reports state by polling only -- the plugin emits no events, so a slow
         // poll is the only way to notice it silencing the phone while this page is open
@@ -281,36 +388,43 @@
 
     /**
      * Everything that should cause a reschedule, and nothing that shouldn't. Deriving a single
-     * string means the effect below has exactly one dependency, which matters because syncAlarms
-     * both reads and writes `status` -- letting it be tracked would make every three-second
-     * status poll re-enter scheduling, and a plan the native side normalised even slightly
-     * differently would then rewrite five alarms forever.
+     * string means the effect below has exactly one dependency, which matters because
+     * syncSchedule both reads and writes `status` -- letting it be tracked would make every
+     * three-second status poll re-enter scheduling, and a plan the native side normalised even
+     * slightly differently would then rewrite the whole list forever.
+     *
+     * Only the modes actually in play contribute: editing a duration while in detection mode
+     * should not re-arm anything, and switching to time mode pushes it anyway.
      */
     let planSignature = $derived(JSON.stringify({
-        enabled: settings.enabled,
+        mode,
+        queued: queuedMode,
         granted: permissions?.allGranted ?? false,
-        alarms: alarmsFor(wakes)
+        alarms: mode === "ml" || queuedMode === "ml" ? alarmsFor(wakes) : null,
+        windows: mode === "manual" || queuedMode === "manual" ? windowsFor(windows) : null
     }));
 
     let lastSynced = "";
 
     $effect(() => {
         const signature = planSignature;
-        // svelte: untrack keeps syncAlarms' own reads out of this effect's dependencies, so the
-        // derived signature above stays the single trigger
+        // svelte: untrack keeps syncSchedule's own reads out of this effect's dependencies, so
+        // the derived signature above stays the single trigger
         untrack(() => {
             if (signature === lastSynced) return;
             lastSynced = signature;
-            void syncAlarms();
+            void syncSchedule();
         });
     });
 </script>
 
-{#if editingOffsets}
-    <OffsetsEditor
+{#if editingTimings}
+    <TimingsEditor
         {settings}
+        {mode}
         times={prayerTimes}
-        onChange={setOffset}
+        onOffsetChange={setOffset}
+        onDurationChange={setDuration}
         onBack={() => history.back()}
     />
 {:else}
@@ -318,7 +432,8 @@
         <span class="hero__icon" aria-hidden="true">
             {#if phase === "silenced"}<BellOff size={30} />
             {:else if phase === "listening"}<Ear size={30} />
-            {:else if phase === "armed"}<ShieldCheck size={30} />
+            {:else if phase === "armed"}
+                {#if byTime}<Clock size={30} />{:else}<ShieldCheck size={30} />{/if}
             {:else}<BellRing size={30} />{/if}
         </span>
 
@@ -328,11 +443,22 @@
             {#if phase === "unsupported"}
                 The engine runs as an Android foreground service, so it does nothing on desktop.
             {:else if phase === "silenced"}
-                Your phone is silenced. It goes back to normal on its own once you finish.
+                {#if byTime && restoreAt}
+                    Your phone is silent until {formatClock(restoreAt)}.
+                {:else}
+                    Your phone is silenced. It goes back to normal on its own once you finish.
+                {/if}
             {:else if phase === "listening"}
                 Watching for prayer movement. Nothing is silenced yet.
             {:else if phase === "armed"}
-                {#if nextWake}
+                {#if byTime}
+                    {#if nextWindow}
+                        Silent for {nextWindow.label} from {formatClock(nextWindow.at)},
+                        for {formatDuration(nextWindow.durationMinutes)}.
+                    {:else}
+                        No prayers selected, so nothing is scheduled.
+                    {/if}
+                {:else if nextWake}
                     Next listening for {nextWake.label} at {formatClock(nextWake.at)}.
                 {:else}
                     No prayers selected, so nothing is scheduled.
@@ -340,11 +466,11 @@
             {:else if !permissions?.allGranted}
                 Needs a few Android permissions before it can run.
             {:else}
-                Turn it on to silence your phone automatically during salah.
+                Pick how you want your phone silenced during salah.
             {/if}
         </p>
 
-        {#if isSilenced && countdown !== null && countdown > 0}
+        {#if isSilenced && !byTime && countdown !== null && countdown > 0}
             <p class="hero__countdown">
                 Restoring your ringer in <strong>{formatCountdown(countdown)}</strong> unless you keep praying
             </p>
@@ -365,26 +491,45 @@
 
     {#if !unsupported}
         <section class="surface mb-4 p-4">
-            <label class="flex items-start gap-3">
-                <input
-                    type="checkbox"
-                    class="mt-0.5 size-5 shrink-0 accent-emerald-500"
-                    checked={settings.enabled}
-                    disabled={!permissions?.allGranted}
-                    onchange={(event) => toggleEnabled(event.currentTarget.checked)}
-                />
-                <span class="min-w-0">
-                    <span class="block text-sm font-semibold">Silence during salah</span>
-                    <span class="mt-0.5 block text-xs leading-snug text-zinc-400">
-                        {#if permissions?.allGranted}
-                            Wakes shortly before each prayer, watches for prayer movement, and silences
-                            the phone only once it is fairly sure you have started.
-                        {:else}
-                            Grant the permissions below first.
-                        {/if}
-                    </span>
-                </span>
-            </label>
+            <h2 class="text-sm font-semibold">How to silence</h2>
+            <!-- design: three buttons rather than a toggle with a sub-choice. The two working
+                 modes are genuinely different bargains, not a setting on one feature, and putting
+                 them side by side is the only way that comparison is visible at all. -->
+            <div class="mt-3 grid grid-cols-3 gap-2" role="group" aria-label="Silencing mode">
+                {#each modeOptions as option}
+                    <button
+                        class="mode-chip"
+                        data-on={mode === option}
+                        data-queued={queuedMode === option}
+                        disabled={busy || (option !== "disabled" && !permissions?.allGranted)}
+                        onclick={() => chooseMode(option)}
+                        aria-pressed={mode === option}
+                    >{modeNames[option]}</button>
+                {/each}
+            </div>
+
+            <p class="mt-3 text-xs leading-snug text-zinc-400">
+                {#if !permissions?.allGranted}
+                    Grant the permissions below first.
+                {:else if mode === "manual"}
+                    Silences your phone for a set stretch around each prayer time. Nothing is
+                    watching, so it can't misfire — but it silences whether or not you're praying.
+                {:else if mode === "ml"}
+                    Wakes shortly before each prayer, watches for prayer movement, and silences
+                    the phone only once it's fairly sure you've started.
+                {:else}
+                    Nothing is scheduled. Your settings are kept for when you turn it back on.
+                {/if}
+            </p>
+
+            <!-- design: a queued switch is invisible otherwise, and the tap that queued it would
+                 look like it simply hadn't registered. -->
+            {#if queuedMode}
+                <p class="action-result action-result--good">
+                    Switching to {modeNames[queuedMode]} once this prayer finishes. Tap
+                    {modeNames[mode]} to cancel.
+                </p>
+            {/if}
         </section>
 
         {#if !permissions?.allGranted}
@@ -394,59 +539,71 @@
             </section>
         {/if}
 
-        <section class="surface mb-4 p-4">
-            <h2 class="text-sm font-semibold">Prayers to watch</h2>
-            <!-- tailwind: a fixed 3-column grid rather than flex-wrap. Five chips of unequal
-                 width wrap to 4 + 1, which leaves Isha stranded on its own row looking like a
-                 mistake; 3 + 2 with equal widths reads as deliberate. -->
-            <div class="mt-3 grid grid-cols-3 gap-2">
-                {#each silencedPrayers as prayer}
-                    <label class="prayer-chip" data-on={settings.prayers[prayer]}>
-                        <input
-                            type="checkbox"
-                            class="sr-only"
-                            checked={settings.prayers[prayer]}
-                            onchange={(event) => togglePrayer(prayer, event.currentTarget.checked)}
-                        />
-                        {labels[prayer]}
-                    </label>
-                {/each}
-            </div>
-            {#if enabledCount === 0}
-                <p class="mt-3 text-xs text-amber-300">Pick at least one prayer, or nothing will be scheduled.</p>
-            {/if}
-        </section>
+        {#if mode !== "disabled"}
+            <section class="surface mb-4 p-4">
+                <h2 class="text-sm font-semibold">Prayers to {byTime ? "cover" : "watch"}</h2>
+                <!-- tailwind: a fixed 3-column grid rather than flex-wrap. Five chips of unequal
+                     width wrap to 4 + 1, which leaves Isha stranded on its own row looking like a
+                     mistake; 3 + 2 with equal widths reads as deliberate. -->
+                <div class="mt-3 grid grid-cols-3 gap-2">
+                    {#each silencedPrayers as prayer}
+                        <label class="prayer-chip" data-on={settings.prayers[prayer]}>
+                            <input
+                                type="checkbox"
+                                class="sr-only"
+                                checked={settings.prayers[prayer]}
+                                onchange={(event) => togglePrayer(prayer, event.currentTarget.checked)}
+                            />
+                            {labels[prayer]}
+                        </label>
+                    {/each}
+                </div>
+                {#if enabledCount === 0}
+                    <p class="mt-3 text-xs text-amber-300">Pick at least one prayer, or nothing will be scheduled.</p>
+                {/if}
+            </section>
 
-        <section class="surface mb-4 divide-y divide-white/5">
-            <div class="flex items-center gap-3 p-4">
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-semibold">Start listening early</p>
-                    <p class="mt-0.5 text-xs leading-snug text-zinc-400">
-                        The engine detects movement rather than predicting it, so it has to already
-                        be running when you begin.
-                    </p>
-                </div>
-                <div class="stepper">
-                    <button onclick={() => nudgeLead(-1)} disabled={settings.leadMinutes <= leadMinutesRange.min} aria-label="One minute less">
-                        <Minus size={15} />
-                    </button>
-                    <span class="stepper__value">{settings.leadMinutes} min</span>
-                    <button onclick={() => nudgeLead(1)} disabled={settings.leadMinutes >= leadMinutesRange.max} aria-label="One minute more">
-                        <Plus size={15} />
-                    </button>
-                </div>
-            </div>
+            <section class="surface mb-4 divide-y divide-white/5">
+                <!-- design: lead time is detection-only. A clock-driven window has nothing to
+                     warm up, so offering it in time mode would be a control that does nothing. -->
+                {#if !byTime}
+                    <div class="flex items-center gap-3 p-4">
+                        <div class="min-w-0 flex-1">
+                            <p class="text-sm font-semibold">Start listening early</p>
+                            <p class="mt-0.5 text-xs leading-snug text-zinc-400">
+                                The engine detects movement rather than predicting it, so it has to
+                                already be running when you begin.
+                            </p>
+                        </div>
+                        <div class="stepper">
+                            <button onclick={() => nudgeLead(-1)} disabled={settings.leadMinutes <= leadMinutesRange.min} aria-label="One minute less">
+                                <Minus size={15} />
+                            </button>
+                            <span class="stepper__value">{settings.leadMinutes} min</span>
+                            <button onclick={() => nudgeLead(1)} disabled={settings.leadMinutes >= leadMinutesRange.max} aria-label="One minute more">
+                                <Plus size={15} />
+                            </button>
+                        </div>
+                    </div>
+                {/if}
 
-            <button class="flex w-full items-center gap-3 p-4 text-left" onclick={() => pushState("", { editingOffsets: true })}>
-                <div class="min-w-0 flex-1">
-                    <p class="text-sm font-semibold">Adjust timings</p>
-                    <p class="mt-0.5 text-xs leading-snug text-zinc-400">
-                        Shift individual prayers if you usually pray later than the calculated time.
-                    </p>
-                </div>
-                <ChevronRight size={18} class="shrink-0 text-zinc-500" />
-            </button>
-        </section>
+                <button class="flex w-full items-center gap-3 p-4 text-left" onclick={() => pushState("", { editingTimings: true })}>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-sm font-semibold">Adjust timings</p>
+                        <p class="mt-0.5 text-xs leading-snug text-zinc-400">
+                            {#if byTime}
+                                Shift each prayer to when you actually start, and set how long to
+                                stay silent.
+                            {:else}
+                                Shift individual prayers if you usually pray later than the
+                                calculated time.
+                            {/if}
+                        </p>
+                    </div>
+                    <ChevronRight size={18} class="shrink-0 text-zinc-500" />
+                </button>
+            </section>
+        {/if}
 
         <!-- design: without this there is no way to know the permission chain works short of
              waiting for a real prayer and hoping. Forcing the ringer proves DND access and
@@ -454,8 +611,8 @@
         <section class="surface mb-4 p-4">
             <h2 class="text-sm font-semibold">Check it works</h2>
             <p class="mt-0.5 text-xs leading-snug text-zinc-400">
-                Silences your phone right now, skipping the detection, so you can confirm the
-                permissions are really in place. Restoring puts your ringer back.
+                Silences your phone right now, skipping the schedule entirely, so you can confirm
+                the permissions are really in place. Restoring puts your ringer back.
             </p>
             <div class="mt-3 flex gap-2">
                 <button class="button button--secondary flex-1" onclick={() => run(forceSilent, "Could not silence the phone.")} disabled={busy}>
@@ -465,7 +622,9 @@
                     Restore
                 </button>
             </div>
-            {#if !isListening}
+            <!-- the plugin rejects start_native_task outside detection mode, so the button only
+                 exists where it can actually do something -->
+            {#if mode === "ml" && !isListening}
                 <button class="button mt-2 w-full" onclick={() => run(() => startEngine("manual_start"), "Could not start the engine.")} disabled={busy}>
                     Start detecting now
                 </button>
@@ -492,11 +651,27 @@
         </section>
 
         <p class="text-xs leading-relaxed text-zinc-500">
-            Detection is not perfect. It can miss a prayer, or silence your phone when you were
-            only sitting still — so do not rely on it for anything you cannot afford to miss a
-            call about. Your ringer is always restored automatically afterwards.
+            {#if byTime}
+                Your phone goes silent on the clock, whether or not you are praying, and comes back
+                when the time is up. Nothing adapts — if you pray late, or take longer than the
+                window, it will not notice.
+            {:else}
+                Detection is not perfect. It can miss a prayer, or silence your phone when you were
+                only sitting still — so do not rely on it for anything you cannot afford to miss a
+                call about.
+            {/if}
+            Your ringer is always restored automatically afterwards.
         </p>
     {/if}
+{/if}
+
+{#if blockingSession && blockedTarget}
+    <ModeSwitchDialog
+        session={blockingSession}
+        target={blockedTarget}
+        bind:open={switchDialogOpen}
+        onChoose={resolveSwitch}
+    />
 {/if}
 
 <style>
@@ -587,6 +762,7 @@
         background: color-mix(in srgb, var(--app-accent-strong) 12%, transparent);
     }
 
+    .mode-chip,
     .prayer-chip {
         display: grid;
         place-items: center;
@@ -599,11 +775,22 @@
         cursor: pointer;
     }
 
+    .mode-chip[data-on="true"],
     .prayer-chip[data-on="true"] {
         color: var(--app-text);
         border-color: color-mix(in srgb, var(--app-accent-strong) 55%, transparent);
         background: color-mix(in srgb, var(--app-accent-strong) 14%, transparent);
     }
+
+    /* design: a dashed outline for a queued mode -- clearly chosen, clearly not yet in effect.
+       A solid fill would claim the switch had already happened. */
+    .mode-chip[data-queued="true"] {
+        color: var(--app-text);
+        border-style: dashed;
+        border-color: color-mix(in srgb, var(--app-accent-strong) 55%, transparent);
+    }
+
+    .mode-chip:disabled { opacity: 0.4; cursor: default; }
 
     /* keyboard focus still has to be visible even though the real checkbox is sr-only */
     .prayer-chip:focus-within { outline: 2px solid var(--app-accent-strong); outline-offset: 2px; }

@@ -1,5 +1,5 @@
 import type { PrayerDay, PrayerSlot } from "$lib/features/prayer-times/service";
-import type { ScheduleAlarmInput, ScheduledAlarm } from "./engine";
+import type { ScheduleAlarmInput, ScheduledAlarm, SilenceWindowInput } from "./engine";
 import { isSilencedPrayer, silencedPrayers, type AutoSilentSettings, type SilencedPrayer } from "./storage";
 
 export interface PlannedWake {
@@ -27,6 +27,54 @@ export function planWakes(day: PrayerDay, settings: AutoSilentSettings): Planned
         const wakeAt = new Date(slot.at.getTime() + shift * 60_000);
         return [{ prayer: id, label: slot.meta.label, prayerAt: slot.at, wakeAt }];
     });
+}
+
+export interface PlannedWindow {
+    prayer: SilencedPrayer;
+    label: string;
+    /** The prayer time as calculated, before this feature touches it. */
+    prayerAt: Date;
+    /** When the phone goes silent: prayerAt + offset. */
+    startAt: Date;
+    /** When the ringer comes back: startAt + duration. */
+    endAt: Date;
+    durationMinutes: number;
+}
+
+/**
+ * The time-mode equivalent of [planWakes]: a fixed silent period per enabled prayer.
+ *
+ * `leadMinutes` deliberately plays no part here. It exists in detection mode because the service
+ * has to already be running before you start moving; a clock-driven window has nothing to warm
+ * up, so starting it early would only be silence while you are not yet praying. The offset alone
+ * positions the window.
+ */
+export function planWindows(day: PrayerDay, settings: AutoSilentSettings): PlannedWindow[] {
+    return day.slots.flatMap((slot: PrayerSlot) => {
+        const id = slot.meta.id;
+        if (!isSilencedPrayer(id) || !settings.prayers[id]) return [];
+
+        const durationMinutes = settings.durations[id];
+        const startAt = new Date(slot.at.getTime() + settings.offsets[id] * 60_000);
+        const endAt = new Date(startAt.getTime() + durationMinutes * 60_000);
+        return [{ prayer: id, label: slot.meta.label, prayerAt: slot.at, startAt, endAt, durationMinutes }];
+    });
+}
+
+/**
+ * Turns a plan into the window list the plugin expects.
+ *
+ * Ids match [alarmsFor] on purpose: they are per-prayer either way, so switching modes reuses the
+ * same id for the same prayer rather than leaving a stale entry behind under a different number.
+ */
+export function windowsFor(windows: PlannedWindow[]): SilenceWindowInput[] {
+    return windows.map((window) => ({
+        id: silencedPrayers.indexOf(window.prayer) + 1,
+        hour: window.startAt.getHours(),
+        minute: window.startAt.getMinutes(),
+        durationMinutes: window.durationMinutes,
+        label: window.label
+    }));
 }
 
 /**
@@ -79,4 +127,12 @@ export function formatCountdown(millis: number): string {
 export function formatOffset(minutes: number): string {
     if (minutes === 0) return "on time";
     return minutes > 0 ? `+${minutes} min` : `${minutes} min`;
+}
+
+/** `1 hr 5 min` reads better than `65 min` once a window runs past the hour. */
+export function formatDuration(minutes: number): string {
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    const rest = minutes % 60;
+    return rest === 0 ? `${hours} hr` : `${hours} hr ${rest} min`;
 }

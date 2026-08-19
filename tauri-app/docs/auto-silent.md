@@ -1,13 +1,39 @@
 # Auto Silent
 
-Silences the phone while you pray, and puts the ringer back afterwards. It is the app's front end
+Silences the phone while you pray, and puts the ringer back afterwards, either by recognising
+salah from movement or by the clock alone. It is the app's front end
 for the vendored `tauri-plugin-silence-of-salah-engine` — see
 [`backend-api.md`](backend-api.md#tauri-plugin-silence-of-salah-engine-android-only-localvendored)
 for the plugin's own contract.
 
 Source: [`src/lib/features/auto-silent/`](../src/lib/features/auto-silent/)
 
-## How it actually works
+## Two modes, and why there are two
+
+The page is a three-way choice — **Off**, **By time**, **Detection** — and the mode itself is
+never stored here. The plugin keeps it in its own state file and acts on it while the app is
+closed: alarms fire, the boot receiver re-arms, a deferred switch lands when a prayer ends. A
+second copy in `localStorage` could only drift out of step with the thing actually doing the
+work, so `status.mode` is read as the source of truth and `settings` holds only what the plugin
+does not know about — which prayers, the lead time, the offsets, the durations.
+
+The one exception is a flag: the plugin defaults to detection mode for the benefit of callers
+written before modes existed, and inheriting that would mean a fresh install arms itself the
+moment permissions are granted. `settings.initialised` records that this app has had its say, and
+the first run explicitly switches the engine to `disabled`. A settings record written before modes
+existed counts as initialised — it plainly has been configured — so upgrading does not quietly
+switch anyone's feature off.
+
+| | Detection | By time |
+| --- | --- | --- |
+| Decides with | Motion sensors and the model | The clock |
+| Costs | A foreground service and a wakelock while listening | Two exact alarms per window; nothing runs between them |
+| Gets it wrong by | Missing a prayer, or silencing you for sitting still | Silencing you when you were not praying, or ending before you finished |
+
+Time mode exists because detection is the weakest part of this feature, and no amount of honest
+UI copy makes "it might just not fire" acceptable as someone's only option.
+
+## How detection works
 
 The engine does not predict prayer, it *recognises* it. A foreground service samples the
 accelerometer, gyroscope and magnetometer in a 100 ms loop, runs each window through a small
@@ -29,15 +55,50 @@ when you start praying.** That is what the alarms are for.
 1. `AutoSilentPage` fetches today's prayer times through the existing
    `prayerTimesService.day(...)` — the same Aladhan call and the same cache the Prayer Times tab
    uses, so the two features never disagree about when Asr is.
-2. `planWakes(day, settings)` computes, for each enabled prayer,
-   `wakeAt = prayerTime + offset − leadMinutes`.
-3. `alarmsFor(wakes)` turns that into the plugin's alarm shape, and `scheduleDailyAlarms` writes
-   the whole list natively.
-4. The plugin's own `AlarmManager` entries fire at those times and start the service. Its
-   `BOOT_COMPLETED` receiver re-arms them after a reboot, so nothing in the app has to.
+2. Each mode plans from that, per enabled prayer:
+   - **Detection** — `planWakes` computes `wakeAt = prayerTime + offset − leadMinutes`, and
+     `alarmsFor` turns it into the plugin's alarm shape.
+   - **By time** — `planWindows` computes `startAt = prayerTime + offset` and
+     `endAt = startAt + duration`, and `windowsFor` turns it into the plugin's window shape.
+3. `scheduleDailyAlarms` / `scheduleManualWindows` writes the whole list natively.
+4. The plugin's own `AlarmManager` entries fire at those times. Its `BOOT_COMPLETED` receiver
+   re-arms them after a reboot, so nothing in the app has to.
 
-Alarms are a bare hour and minute repeating daily, which means prayer times drifting by a minute
-or two need re-syncing — that happens whenever the page loads or the plan changes.
+`leadMinutes` deliberately plays no part in time mode. It exists in detection mode because the
+service has to already be running before you start moving; a clock-driven window has nothing to
+warm up, so starting it early would only be silence while you are not yet praying. The offset
+alone positions the window, which makes it the "when do I actually start" knob in both modes.
+
+Ids are per prayer and shared between the two plans, so switching modes reuses the same id for
+the same prayer rather than leaving a stale entry behind under a different number.
+
+Both are a bare hour and minute repeating daily, which means prayer times drifting by a minute
+or two need re-syncing — that happens whenever the page loads or the plan changes. Only the
+active mode's plan is pushed, plus a queued mode's if there is one: a queued switch arms itself
+from whatever the plugin has stored, and for a mode the user has never used that would be
+nothing at all.
+
+## Switching modes without ending a prayer
+
+Switching tears the outgoing mode down, and if that mode is holding the ringer silent at the
+time, tearing it down turns the ringer back on — possibly mid-prayer, which is the exact failure
+this feature exists to prevent.
+
+So `setEngineMode` is called with the default `ifIdle` policy, which refuses while a session is
+running and hands back the session that blocked it. The page turns that into `ModeSwitchDialog`:
+*switch when this finishes* (`afterCurrentSession`) or *switch now* (`immediate`), with the safe
+option first and visually primary. The wording turns on the session's `silencing` flag rather
+than on which mode owns it — "your phone is silent right now" is the fact that makes switching a
+bad idea; whether a model or a clock decided it is not something the user needs to think about at
+that moment.
+
+A queued switch shows as a dashed outline on the mode chip plus a line of text, because otherwise
+the tap that queued it looks exactly like a tap that did not register. Re-picking the mode already
+running cancels it — that is the plugin's own rule, so `chooseMode` deliberately does *not*
+short-circuit when the tapped mode is already active.
+
+`start_native_task` rejects outside detection mode, so the "Start detecting now" button only
+exists there rather than being rendered and then failing.
 
 ## Offsets, and why they don't touch Prayer Times
 
@@ -47,13 +108,19 @@ offsets shifted the displayed times too — its default shipped Dhuhr at +60 min
 times the app showed you were an hour off the calculated ones.
 
 This version deliberately does not do that. Offsets live in Auto Silent's own settings and move
-only when the engine wakes; the Prayer Times tab keeps showing the calculated times unchanged.
+only when the engine acts -- when it starts listening, or when it goes silent -- while the
+Prayer Times tab keeps showing the calculated times unchanged.
 People read prayer times as authoritative, and quietly shifting them to suit a phone setting is
-not a trade worth making. The offsets editor says so directly.
+not a trade worth making. The timings editor says so directly.
 
 Offsets cover the five fard prayers only. Sunrise is a boundary rather than a prayer, and
 Tahajjud is voluntary and falls at an hour where silencing the phone unasked would be its own
 problem.
+
+Durations default to 25 minutes: long enough for a fard prayer with its sunnah and a
+congregation, short enough that a phone left silent by a prayer you skipped is not silent for the
+rest of the hour. Erring long is the safer direction — ending early means the phone rings
+mid-prayer — but only slightly, since every minute of it is a minute of missed calls.
 
 ## Permissions
 
@@ -82,42 +149,9 @@ which is the only reliable moment to notice a grant. The master toggle stays dis
 - **Live status.** The Flutter UI showed one read-only "service running: true/false" row. This
   shows phase, which prayer it likely woke for, and the restore countdown.
 
-## The time-based mode the plugin now offers
-
-Everything above describes ML mode, which is what this page currently drives. The plugin also
-supports a second, clock-only mode, and the app does not use it yet.
-
-`set_engine_mode` chooses between `disabled`, `manual` and `ml`. In `manual` mode the plugin
-takes a list of silence windows — a start time and a duration each — and silences the phone for
-exactly that period, with no sensors, no model and no foreground service. Two exact alarms per
-window is the whole mechanism.
-
-It exists because detection is the weakest part of this feature. The model can miss a prayer
-outright, and no amount of UI honesty makes that acceptable as someone's only option. A window
-that is merely approximate still beats one that does not fire. The trade is the obvious one:
-manual mode silences the phone whether or not anyone is praying, and it stops on schedule whether
-or not they have finished.
-
-The window start is a resolved wall-clock time, offset already applied — the same division of
-labour the wake alarms already use, because the plugin has no location and no calendar and cannot
-compute prayer times itself. So the offsets editor described above is exactly the input manual
-mode needs; a duration per prayer is the only new thing to collect.
-
-Both schedules survive a mode switch, so the app can send its windows once and let the user flip
-between modes without rebuilding anything.
-
-The switch itself needs a prompt in the UI. Tearing the outgoing mode down restores the ringer,
-and doing that while the engine has the phone silent would make it ring mid-prayer — the exact
-failure this feature exists to prevent. So `setEngineMode` defaults to refusing while a session
-is running and hands back what blocked it (`activeSession`, with a `silencing` flag and, in
-manual mode, the prayer's name). The page should turn that into a choice — switch now, or switch
-when this prayer finishes — and send the answer back as `"immediate"` or `"afterCurrentSession"`.
-A deferred switch is the plugin's problem from then on: it is persisted and applied by whichever
-path ends the session, with no further involvement from the app.
-
 See
 [`backend-api.md`](backend-api.md#tauri-plugin-silence-of-salah-engine-android-only-localvendored)
-for the command list and the restore guarantees.
+for the full command list and the plugin's restore guarantees.
 
 ## Known limitations
 
@@ -130,18 +164,26 @@ for the command list and the restore guarantees.
   label only — nothing behavioural depends on it.
 - **Detection is imperfect.** It can miss a prayer, or silence the phone when you were only
   sitting still. The page says this in plain words rather than implying reliability it does not
-  have. The plugin's time-based mode is the answer to this, and is not wired into the page yet.
+  have, and time mode is the answer for anyone who would rather not gamble.
+- **Time mode does not adapt.** It silences on the clock whether or not you are praying, and
+  stops when the window is up whether or not you have finished. The page says that too — the
+  closing paragraph swaps to match the active mode rather than describing both at once.
 
 ## The effect wiring, and one trap in it
 
-`syncAlarms()` both reads `status` (to compare against what is already scheduled) and writes it
+`syncSchedule()` both reads `status` (to compare against what is already scheduled) and writes it
 (via `refreshStatus()` afterwards). Driving it from an effect that tracks those reads would mean
 every three-second status poll re-entered scheduling — and if the native side ever normalised a
 plan even slightly differently from what was sent, `alarmsMatch` would never be satisfied and the
 app would rewrite five alarms forever.
 
-So the effect depends on exactly one thing: a derived `planSignature` string covering the enabled
-flag, the granted flag and the computed alarm list. The call itself is wrapped in `untrack()`.
+So the effect depends on exactly one thing: a derived `planSignature` string covering the active
+mode, any queued mode, the granted flag and the computed plan. The call itself is wrapped in
+`untrack()`.
+
+The signature is also what keeps the mode out of local state from becoming a loop. `mode` is
+derived from `status`, and `syncSchedule` writes `status` — but a three-second poll that returns
+the same mode produces the same signature, so `lastSynced` short-circuits it.
 
 ## Never trust the plugin's alarm list
 
@@ -150,7 +192,7 @@ scheduled. It is **not** a live query of `AlarmManager`, and the two drift apart
 cancels every one of an app's alarms when the app is force-stopped, and the plugin's record knows
 nothing about it.
 
-`syncAlarms()` originally compared the plan against that record and skipped the write when they
+`syncSchedule()` originally compared the plan against that record and skipped the write when they
 matched. On a device this produced the worst possible failure — after a force-stop, `AlarmManager`
 held zero alarms, the record still claimed five, the comparison passed, nothing was rewritten, and
 the page reported "Ready. Next listening for Dhuhr at 12:15 PM" for a feature that could never

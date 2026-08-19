@@ -12,26 +12,60 @@ export function isSilencedPrayer(id: PrayerId): id is SilencedPrayer {
     return (silencedPrayers as readonly string[]).includes(id);
 }
 
+/**
+ * Everything the plugin does not already persist itself.
+ *
+ * Notably absent is the mode. The plugin keeps that in its own state file and acts on it while
+ * the app is closed -- alarms fire, the boot receiver re-arms -- so it is the source of truth
+ * and this file would only be a second copy to drift out of sync with it.
+ */
 export interface AutoSilentSettings {
-    /** Master switch. Off means no alarms are scheduled at all. */
-    enabled: boolean;
+    /**
+     * Whether this app has ever configured the engine. The plugin defaults to ML mode for the
+     * benefit of callers written before modes existed, which is not a default to inherit here:
+     * the feature must not arm itself before the user has asked for it. False means the page
+     * still owes the plugin a one-time switch to `disabled`.
+     */
+    initialised: boolean;
     /** Which of the five to watch for. */
     prayers: Record<SilencedPrayer, boolean>;
     /**
      * How many minutes before the (offset-adjusted) prayer time the engine starts listening.
      * It needs to already be running when you begin, since it detects posture rather than
      * predicting it.
+     *
+     * Detection mode only. A time-based window has nothing to warm up, so starting it early
+     * would just be silence while you are not yet praying.
      */
     leadMinutes: number;
     /**
-     * Per-prayer nudge in minutes, applied only to when the engine wakes up -- never to the
-     * times the Prayer Times feature displays. Positive is later.
+     * Per-prayer nudge in minutes, applied only to the engine -- never to the times the Prayer
+     * Times feature displays. Positive is later.
+     *
+     * In detection mode it shifts when listening begins; in time mode it is the start of the
+     * silence itself, which makes it the "when do I actually start praying" knob in both.
      */
     offsets: Record<SilencedPrayer, number>;
+    /**
+     * How long the phone stays silent in time mode, per prayer. Unused in detection mode, which
+     * works out the end for itself from when you stop moving.
+     */
+    durations: Record<SilencedPrayer, number>;
 }
 
 export const leadMinutesRange = { min: 0, max: 30 } as const;
 export const offsetRange = { min: -60, max: 120 } as const;
+// upper bound matches the plugin's own MANUAL_WINDOW_MAX_MINUTES, which rejects anything longer
+export const durationRange = { min: 1, max: 240 } as const;
+
+/**
+ * Long enough for a fard prayer with its sunnah and a congregation, short enough that a phone
+ * left silent by a prayer you skipped is not silent for the rest of the hour. Erring long is the
+ * safer direction -- ending early means the phone rings mid-prayer, which is the failure this
+ * whole feature exists to prevent -- but only slightly, since every minute of it is a minute of
+ * missed calls.
+ */
+const defaultDurationMinutes = 25;
 
 function everyPrayer<T>(value: T): Record<SilencedPrayer, T> {
     return Object.fromEntries(silencedPrayers.map((id) => [id, value])) as Record<SilencedPrayer, T>;
@@ -39,10 +73,11 @@ function everyPrayer<T>(value: T): Record<SilencedPrayer, T> {
 
 export function defaultSettings(): AutoSilentSettings {
     return {
-        enabled: false,
+        initialised: false,
         prayers: everyPrayer(true),
         leadMinutes: 3,
-        offsets: everyPrayer(0)
+        offsets: everyPrayer(0),
+        durations: everyPrayer(defaultDurationMinutes)
     };
 }
 
@@ -63,7 +98,12 @@ function parse(raw: unknown): AutoSilentSettings {
     if (typeof raw !== "object" || raw === null) return settings;
     const record = raw as Record<string, unknown>;
 
-    if (typeof record.enabled === "boolean") settings.enabled = record.enabled;
+    if (typeof record.initialised === "boolean") settings.initialised = record.initialised;
+    // a record written before modes existed has `enabled` and no `initialised`; it has plainly
+    // been configured already, so honour that rather than resetting the engine underneath it
+    if (typeof record.enabled === "boolean" && record.initialised === undefined) {
+        settings.initialised = true;
+    }
     settings.leadMinutes = clamp(record.leadMinutes, leadMinutesRange.min, leadMinutesRange.max, settings.leadMinutes);
 
     const prayers = record.prayers;
@@ -79,6 +119,16 @@ function parse(raw: unknown): AutoSilentSettings {
         for (const id of silencedPrayers) {
             settings.offsets[id] = clamp(
                 (offsets as Record<string, unknown>)[id], offsetRange.min, offsetRange.max, 0
+            );
+        }
+    }
+
+    const durations = record.durations;
+    if (typeof durations === "object" && durations !== null) {
+        for (const id of silencedPrayers) {
+            settings.durations[id] = clamp(
+                (durations as Record<string, unknown>)[id],
+                durationRange.min, durationRange.max, defaultDurationMinutes
             );
         }
     }
