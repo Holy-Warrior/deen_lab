@@ -272,6 +272,91 @@ Sensor fallback chain, decided once per `start()` call:
 
 Permissions granted in `capabilities/mobile.json`: `compass:allow-start`, `compass:allow-stop`.
 
+### `tauri-plugin-silence-of-salah-engine` (Android only, local/vendored)
+
+Source: [`src-tauri/plugins/silence-of-salah-engine/`](../src-tauri/plugins/silence-of-salah-engine/)
+
+Silences the phone while you pray, either by recognising salah from on-device motion-sensor ML
+inference or by the clock alone. Unlike `device-settings` and `compass`, this one was not written
+for this app — it is vendored in
+from the standalone
+[`tauri-plugin-silence-of-salah-engine`](https://github.com/Holy-Warrior/silence_of_salah_engine)
+repo, itself a port of the original Flutter plugin. It is copied in rather than referenced by an
+out-of-tree path so a fresh clone still builds; when the upstream plugin changes, re-copy
+`Cargo.toml`, `build.rs`, `src/`, `android/` and `permissions/` over the top.
+
+It is much bigger than the other two: a foreground service, exact daily alarms, a boot receiver,
+a sensor loop and a 1.5 MB bundled XGBoost model. None of that needs wiring here — the plugin's
+own `AndroidManifest.xml` declares the service, receivers and ten permissions, and Gradle's
+manifest merger folds them into the app automatically.
+
+#### Three modes
+
+`set_engine_mode` picks between them, and `get_native_status().mode` reports which is active. A
+device that has never been told otherwise reports `disabled`: the plugin can silence the phone, so
+it stays inert until an app asks it not to.
+
+| Mode | How it decides | Cost | Fails by |
+| --- | --- | --- | --- |
+| `ml` | Motion sensors and the model, inside a foreground service | A running service and a wakelock for as long as it listens | Missing a prayer, or silencing you for sitting still |
+| `manual` | The clock. Silent from a supplied time until a fixed number of minutes later | Two exact alarms per window; nothing runs in between | Silencing you when you were not praying, or ending before you finished |
+| `disabled` | Nothing is armed | None | — |
+
+`manual` exists because the model is not reliable enough to be someone's only option. It cannot
+adapt, but it cannot be wrong about what it was told to do either. The two working modes are
+mutually exclusive: they share one persisted audio state on the native side, so running both
+would mean two owners fighting over the ringer.
+
+```ts
+import { scheduleDailyAlarms, engineStatus, stopEngine } from "$lib/features/auto-silent/engine";
+
+await scheduleDailyAlarms([{ id: 1, hour: 5, minute: 9, label: "Fajr" }]);
+const status = await engineStatus();   // mode, serviceRunning, audioState, ...
+```
+
+Things worth knowing before using it:
+
+- **It emits no events.** There is no channel and no callback — the only way to observe the
+  engine is to poll `get_native_status`. `AutoSilentPage.svelte` polls every three seconds while
+  the page is open, and not at all when it isn't.
+- **`schedule_daily_alarms` replaces the entire alarm list.** There is no incremental add or
+  remove, so callers always send the complete set; an empty list cancels everything.
+- **The plugin owns alarm persistence.** Its `AlarmScheduler` plus a `BOOT_COMPLETED` receiver
+  re-arm alarms after a reboot, so the app does not have to. (The original Flutter app bypassed
+  all of this and built a parallel alarm system; this app deliberately does not.)
+- **`schedule_manual_windows` is the manual-mode equivalent**, and behaves the same way: it
+  replaces the whole list, ids must be unique, and an empty list cancels everything. `hour` and
+  `minute` are the *final* wall-clock start with the offset already folded in — the plugin has no
+  location and no calendar, so it cannot compute prayer times, and that arithmetic stays here.
+- **Switching modes does not clear either schedule.** The outgoing mode is disarmed (service
+  stopped, alarms cancelled, any silence it owned undone) but its configuration is kept, so
+  flipping between modes is a toggle rather than a reset.
+- **A mode switch will not end a prayer.** `set_engine_mode` takes a policy — `ifIdle` (the
+  default, refuse while something is running), `immediate` (switch anyway) or
+  `afterCurrentSession` (queue it). A blocked switch resolves with `applied: false` and the
+  session that blocked it in `status.activeSession`, so the page can ask "switch now" or "after
+  this prayer" rather than guessing. A queued switch is persisted, survives the app closing, and
+  is applied by whichever path ends the session. Re-requesting the current mode cancels it.
+- **Manual mode always hands the ringer back.** The restore deadline is persisted rather than
+  living only in a pending alarm, and `get_native_status` checks it on every call. That matters
+  because Android cancels every one of an app's alarms when the app is force-stopped and tells
+  nobody — without the check, a force-stop mid-window would leave the phone silent indefinitely.
+- **`start_native_task` now rejects outside `ml` mode.** Nothing in this app calls it outside
+  that mode, but the plugin refuses rather than letting the sensor service and manual mode both
+  own the ringer.
+- **Four permissions, all fire-and-forget.** `request_*` opens a system settings screen and
+  resolves immediately — Android reports no answer, so the only way to learn the outcome is to
+  poll `get_permission_status` once the app is visible again.
+- **The `debug` permission set is granted on purpose.** `debug_set_audio_silent` /
+  `debug_restore_audio_default` force the ringer without the ML engine, which is what powers the
+  "Check it works" buttons — otherwise the only way to test the permission chain is to wait for a
+  real prayer.
+
+Permissions granted in `capabilities/mobile.json`: the whole `silence-of-salah-engine:default`
+set (seventeen commands) plus `silence-of-salah-engine:debug` (four more). These are permission
+*sets* rather than individual `allow-*` identifiers — the plugin defines them in
+`permissions/default.toml` and `permissions/debug.toml`.
+
 ---
 
 ## 3. Capabilities: `default.json` vs `mobile.json`

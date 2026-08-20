@@ -39,3 +39,6 @@ strip = true
 tauri-plugin-geolocation = "2.3.2"
 tauri-plugin-device-settings = { path = "plugins/device-settings" }
 tauri-plugin-compass = { path = "plugins/compass" }
+# vendored in from the standalone tauri-plugin-silence-of-salah-engine repo rather than referenced
+# by an out-of-tree path, so a fresh clone of this app still builds on any machine
+tauri-plugin-silence-of-salah-engine = { path = "plugins/silence-of-salah-engine" }

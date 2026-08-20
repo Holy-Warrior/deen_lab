@@ -381,6 +381,11 @@ pub fn run() {
                 _app.handle().plugin(tauri_plugin_geolocation::init())?;
                 _app.handle().plugin(tauri_plugin_device_settings::init())?;
                 _app.handle().plugin(tauri_plugin_compass::init())?;
+                // tauri: the engine plugin owns its own foreground service, exact alarms and
+                // boot receiver -- registering it here is all the app has to do for those to
+                // survive a reboot, since the plugin's manifest is merged into ours by Gradle
+                _app.handle()
+                    .plugin(tauri_plugin_silence_of_salah_engine::init())?;
             }
             Ok(())
         })

@@ -39,14 +39,13 @@ android {
         getByName("release") {
             // debug flag added
             signingConfig = signingConfigs.getByName("debug")
-            isMinifyEnabled = true
-            // more size compression added
-            isShrinkResources = true
-            proguardFiles(
-                *fileTree(".") { include("**/*.pro") }
-                    .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
-                    .toList().toTypedArray()
-            )
+            // Minify/shrink deliberately off: this build is a demo APK, not a shipping artifact.
+            // It builds much faster, and it sidesteps the fact that the local plugins ship empty
+            // consumer-rules.pro files, so R8 would obfuscate the Kotlin classes that Tauri
+            // dispatches @Command calls to reflectively. Turn these back on for a real release
+            // and add the keep rules first.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
     kotlinOptions {

@@ -13,3 +13,5 @@ vite.config.ts.timestamp-*
 *.log
 # generated Hadith bundles -- published to the data repo, not tracked here
 build-hadith-bundles/
+# running notes from on-device testing -- scratch, not part of the docs set
+docs/device-testing.md

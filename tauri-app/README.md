@@ -1,11 +1,11 @@
 # DeenLab
 
 A Tauri v2 mobile app (primary target: Android) for Islamic daily-practice tools — prayer
-times, Qibla direction, Sehri & Iftari timings, and more, with an AI-assisted "Feature Studio"
-for generating small self-contained tools on demand.
+times, Qibla direction, Sehri & Iftari timings, automatically silencing the phone during salah,
+and an AI-assisted "Feature Studio" for generating small self-contained tools on demand.
 
-Frontend: SvelteKit 5 (runes) + Tailwind CSS 4 + bits-ui. Backend: Rust via Tauri 2, with a
-small local native plugin for Android-specific functionality (see below).
+Frontend: SvelteKit 5 (runes) + Tailwind CSS 4 + bits-ui. Backend: Rust via Tauri 2, with
+several local native plugins for Android-specific functionality (see below).
 
 ## Docs
 
@@ -17,6 +17,9 @@ small local native plugin for Android-specific functionality (see below).
 - [`docs/feature-studio.md`](docs/feature-studio.md) — how Studio generates tools with Groq: why
   the app injects Tailwind instead of letting the model link it, how a generated tool is sandboxed,
   and the measured rate limits that shaped the model choice.
+- [`docs/auto-silent.md`](docs/auto-silent.md) — how the phone gets silenced during salah: the
+  detection hysteresis, why the wake alarms exist at all, and why the per-prayer offsets
+  deliberately do not move the times the Prayer Times tab shows.
 - [`docs/legacy-frontend.md`](docs/legacy-frontend.md) — what the first-pass front-end did, and
   which of its ideas were carried into the rebuild. Most of that code has now been deleted as
   each feature got rebuilt, so this doc is the surviving record of it.
@@ -60,7 +63,10 @@ src/
 
 src-tauri/
   src/                    main Rust app crate (commands, setup)
-  plugins/device-settings/  local Android-only plugin (Settings screens, Toast) -- see backend-api.md
+  plugins/                Android-only native plugins -- see backend-api.md
+    device-settings/        local: opens system Settings screens, shows a Toast
+    compass/                local: streams device heading for Qibla
+    silence-of-salah-engine/  vendored from its own repo: salah detection and time-based silencing
   capabilities/           default.json (all platforms) + mobile.json (Android-only permissions)
 
 docs/                     see above

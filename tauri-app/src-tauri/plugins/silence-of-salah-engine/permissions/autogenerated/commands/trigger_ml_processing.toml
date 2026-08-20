@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-trigger-ml-processing"
+description = "Enables the trigger_ml_processing command without any pre-configured scope."
+commands.allow = ["trigger_ml_processing"]
+
+[[permission]]
+identifier = "deny-trigger-ml-processing"
+description = "Denies the trigger_ml_processing command without any pre-configured scope."
+commands.deny = ["trigger_ml_processing"]

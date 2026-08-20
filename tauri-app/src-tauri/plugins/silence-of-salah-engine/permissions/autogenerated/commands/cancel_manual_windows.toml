@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-cancel-manual-windows"
+description = "Enables the cancel_manual_windows command without any pre-configured scope."
+commands.allow = ["cancel_manual_windows"]
+
+[[permission]]
+identifier = "deny-cancel-manual-windows"
+description = "Denies the cancel_manual_windows command without any pre-configured scope."
+commands.deny = ["cancel_manual_windows"]
