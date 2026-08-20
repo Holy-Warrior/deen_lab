@@ -247,6 +247,12 @@ class EngineNativeActions(
         return snapshot
     }
 
+    /**
+     * Confirms the schedule is really armed, and puts it back when it is not.
+     * See [ScheduleHealth] for why the persisted list is not enough on its own.
+     */
+    fun verifySchedule(): Map<String, Any?> = ScheduleHealth.verify(context)
+
     fun getPermissionStatus(): Map<String, Any> {
         val status = PermissionManager.checkAll(context)
 

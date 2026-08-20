@@ -67,6 +67,7 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             commands::submit_ml_decision_output,
             commands::debug_set_audio_silent,
             commands::debug_restore_audio_default,
+            commands::verify_schedule,
             commands::get_permission_status,
             commands::request_exact_alarm_permission,
             commands::request_dnd_access,

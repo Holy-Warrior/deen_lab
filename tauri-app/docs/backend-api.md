@@ -316,6 +316,13 @@ const status = await engineStatus();   // mode, serviceRunning, audioState, ...
 
 Things worth knowing before using it:
 
+- **`verify_schedule` is the self-repair entry point.** It confirms the persisted schedule is
+  really armed and re-arms it if not, undoes a silence that outlived its deadline, applies a
+  queued mode switch, and disarms anything left over while the mode is `disabled`. It repairs
+  from the plugin's own stored configuration, so it needs no location and no network, and the
+  re-arm is idempotent — call it as often as you like. DeenLab calls it five seconds after app
+  start. The `missingBefore`/`missingAfter` ids in its report are best-effort: they come from a
+  `FLAG_NO_CREATE` probe that can prove an alarm is gone but cannot prove one is present.
 - **It emits no events.** There is no channel and no callback — the only way to observe the
   engine is to poll `get_native_status`. `AutoSilentPage.svelte` polls every three seconds while
   the page is open, and not at all when it isn't.

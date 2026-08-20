@@ -15,6 +15,7 @@ const COMMANDS: &[&str] = &[
     "submit_ml_decision_output",
     "debug_set_audio_silent",
     "debug_restore_audio_default",
+    "verify_schedule",
     "get_permission_status",
     "request_exact_alarm_permission",
     "request_dnd_access",

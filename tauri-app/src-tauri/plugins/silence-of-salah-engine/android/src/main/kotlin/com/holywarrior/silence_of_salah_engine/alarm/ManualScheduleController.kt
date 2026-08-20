@@ -296,6 +296,35 @@ object ManualScheduleController {
         )
     }
 
+    /**
+     * Window ids whose start alarm still has a live PendingIntent. See
+     * [AlarmScheduler.armedAlarmIds] for why a present intent is weaker
+     * evidence than a missing one.
+     */
+    fun armedWindowIds(context: Context): List<Int> =
+        getWindows(context)
+            .filter { it.enabled }
+            .map { it.id }
+            .filter { probe(context, Config.MANUAL_START_REQUEST_BASE + it) != null }
+
+    /**
+     * Whether the restore for an open window is still armed. This is the one
+     * worth checking hardest: losing it is what leaves a phone silent with
+     * nothing scheduled to undo it.
+     */
+    fun hasArmedRestore(context: Context): Boolean {
+        val windowId = EngineStateStore.load(context).activeManualWindowId ?: return false
+        return probe(context, Config.MANUAL_END_REQUEST_BASE + windowId) != null
+    }
+
+    private fun probe(context: Context, requestCode: Int): PendingIntent? =
+        PendingIntent.getBroadcast(
+            context,
+            requestCode,
+            Intent(context, AlarmReceiver::class.java),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+
     private fun cancelPendingIntents(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         getWindows(context).forEach { window ->

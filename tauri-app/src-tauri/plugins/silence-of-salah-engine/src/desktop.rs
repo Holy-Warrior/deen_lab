@@ -107,6 +107,10 @@ impl<R: Runtime> SilenceOfSalahEngine<R> {
         Self::unsupported()
     }
 
+    pub fn verify_schedule(&self) -> Result<ScheduleHealthReport> {
+        Self::unsupported()
+    }
+
     pub fn get_permission_status(&self) -> Result<PermissionStatus> {
         Self::unsupported()
     }
@@ -150,6 +154,7 @@ mod tests {
         assert!(engine().get_engine_mode().is_err());
         assert!(engine().get_manual_windows().is_err());
         assert!(engine().cancel_manual_windows().is_err());
+        assert!(engine().verify_schedule().is_err());
         assert!(engine().get_permission_status().is_err());
         assert!(engine().request_exact_alarm_permission().is_err());
         assert!(engine().request_dnd_access().is_err());

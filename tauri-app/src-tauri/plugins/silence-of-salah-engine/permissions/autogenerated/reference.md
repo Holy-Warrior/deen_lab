@@ -3,7 +3,8 @@
 Allows the core lifecycle of the silence-of-salah-engine plugin: choosing
 between the disabled/manual/ML modes, starting and stopping the foreground
 service, reading its status, managing the ML wake alarms and the manual
-silence windows, and driving the native permission-request flows.
+silence windows, verifying that schedule is genuinely armed, and driving
+the native permission-request flows.
 
 Does NOT include the `debug-*` commands (`trigger_ml_processing`,
 `submit_ml_decision_output`, `debug_set_audio_silent`,
@@ -25,6 +26,7 @@ in the original repo for a debug-only screen that does).
 - `allow-schedule-manual-windows`
 - `allow-get-manual-windows`
 - `allow-cancel-manual-windows`
+- `allow-verify-schedule`
 - `allow-get-permission-status`
 - `allow-request-exact-alarm-permission`
 - `allow-request-dnd-access`
@@ -582,6 +584,32 @@ Enables the trigger_ml_processing command without any pre-configured scope.
 <td>
 
 Denies the trigger_ml_processing command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:allow-verify-schedule`
+
+</td>
+<td>
+
+Enables the verify_schedule command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`silence-of-salah-engine:deny-verify-schedule`
+
+</td>
+<td>
+
+Denies the verify_schedule command without any pre-configured scope.
 
 </td>
 </tr>

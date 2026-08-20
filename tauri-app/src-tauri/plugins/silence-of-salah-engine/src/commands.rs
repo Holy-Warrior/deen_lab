@@ -116,6 +116,15 @@ pub(crate) async fn debug_restore_audio_default<R: Runtime>(
     app.silence_of_salah_engine().debug_restore_audio_default()
 }
 
+/// Confirms the engine's persisted schedule is genuinely armed, repairing it
+/// when it is not. Safe to call at any time: repair is idempotent.
+#[command]
+pub(crate) async fn verify_schedule<R: Runtime>(
+    app: AppHandle<R>,
+) -> Result<ScheduleHealthReport> {
+    app.silence_of_salah_engine().verify_schedule()
+}
+
 #[command]
 pub(crate) async fn get_permission_status<R: Runtime>(
     app: AppHandle<R>,

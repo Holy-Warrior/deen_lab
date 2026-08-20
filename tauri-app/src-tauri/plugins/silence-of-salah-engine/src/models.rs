@@ -138,6 +138,45 @@ pub struct SilenceWindow {
     pub repeat_daily: bool,
 }
 
+/// The result of a [`verify_schedule`] pass.
+///
+/// Everything here is reported rather than assumed: `missing_after` is measured
+/// by re-probing once the repair has run, because a repair is skipped outright
+/// when the exact-alarm permission has been revoked, and saying "fixed" in that
+/// case would be a lie.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScheduleHealthReport {
+    /// The mode the check ran against.
+    pub mode: EngineMode,
+    pub checked_at_millis: i64,
+    /// How many entries the persisted configuration says should be armed.
+    pub expected: i32,
+    /// Ids the probe could prove had no live alarm when the check started.
+    /// One-sided: it under-reports rather than over-reports.
+    #[serde(default)]
+    pub missing_before: Vec<i32>,
+    /// The same probe after the re-arm. Empty means "nothing provably missing",
+    /// which is a weaker claim than "healthy".
+    #[serde(default)]
+    pub missing_after: Vec<i32>,
+    /// Whether a fault was actually caught. The schedule is re-armed on every
+    /// pass regardless, so this is about what to tell the user, not what was done.
+    pub repaired: bool,
+    /// Whether something was found armed while the engine is off, and torn down.
+    pub disarmed_while_off: bool,
+    /// Whether a silence had outlived its deadline and the ringer was handed back.
+    pub stranded_silence_restored: bool,
+    /// Whether an open window had lost the alarm that ends it. The worst of the
+    /// faults this catches: nothing else would ever un-silence the phone.
+    #[serde(default)]
+    pub restore_alarm_rearmed: bool,
+    pub exact_alarm_permission: bool,
+    pub all_permissions_granted: bool,
+    /// Nothing is missing after the pass.
+    pub healthy: bool,
+}
+
 /// Arguments for [`crate::SilenceOfSalahEngine::start_native_task`].
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -486,6 +525,66 @@ mod tests {
 
         let round_tripped: EngineMode = serde_json::from_value(serde_json::json!("manual")).unwrap();
         assert_eq!(round_tripped, EngineMode::Manual);
+    }
+
+    /// The report crosses the bridge as a Kotlin `Map`, so these field names
+    /// have to match `ScheduleHealth.verify` exactly. A typo would surface as a
+    /// repair that silently reported nothing.
+    #[test]
+    fn schedule_health_report_deserializes_kotlin_shaped_json() {
+        let json = serde_json::json!({
+            "mode": "manual",
+            "checkedAtMillis": 1_787_209_000_000i64,
+            "expected": 5,
+            "missingBefore": [1, 2, 3, 4, 5],
+            "missingAfter": [],
+            "repaired": true,
+            "disarmedWhileOff": false,
+            "strandedSilenceRestored": true,
+            "restoreAlarmRearmed": true,
+            "exactAlarmPermission": true,
+            "allPermissionsGranted": true,
+            "healthy": true
+        });
+
+        let report: ScheduleHealthReport = serde_json::from_value(json).unwrap();
+
+        assert_eq!(report.mode, EngineMode::Manual);
+        assert_eq!(report.expected, 5);
+        assert_eq!(report.missing_before, vec![1, 2, 3, 4, 5]);
+        assert!(report.missing_after.is_empty());
+        assert!(report.repaired);
+        assert!(report.stranded_silence_restored);
+        assert!(report.restore_alarm_rearmed);
+        assert!(report.healthy);
+    }
+
+    /// A report that found nothing wrong must still parse, and must not claim a
+    /// repair happened.
+    #[test]
+    fn a_healthy_schedule_health_report_reports_no_repair() {
+        let json = serde_json::json!({
+            "mode": "disabled",
+            "checkedAtMillis": 1_787_209_000_000i64,
+            "expected": 0,
+            "missingBefore": [],
+            "missingAfter": [],
+            "repaired": false,
+            "disarmedWhileOff": false,
+            "strandedSilenceRestored": false,
+            "restoreAlarmRearmed": false,
+            "exactAlarmPermission": true,
+            "allPermissionsGranted": false,
+            "healthy": true
+        });
+
+        let report: ScheduleHealthReport = serde_json::from_value(json).unwrap();
+
+        assert_eq!(report.mode, EngineMode::Disabled);
+        assert!(!report.repaired);
+        assert!(!report.disarmed_while_off);
+        assert!(report.healthy);
+        assert!(!report.all_permissions_granted);
     }
 
     /// Nothing is armed until an app asks for a mode. This has to stay in step

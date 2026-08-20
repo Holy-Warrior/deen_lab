@@ -230,6 +230,13 @@ class SilenceEnginePlugin(private val activity: Activity) : Plugin(activity) {
     }
 
     @Command
+    fun verifySchedule(invoke: Invoke) {
+        runCatching { actions.verifySchedule() }
+            .onSuccess { invoke.resolveObject(it) }
+            .onFailure { invoke.reject(it.message, "VERIFY_SCHEDULE_ERROR", it as? Exception) }
+    }
+
+    @Command
     fun getPermissionStatus(invoke: Invoke) {
         runCatching { actions.getPermissionStatus() }
             .onSuccess { invoke.resolveObject(it) }
