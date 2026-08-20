@@ -71,6 +71,9 @@
      * It is the plugin that acts on the mode while this app is closed -- alarms fire, the boot
      * receiver re-arms, a deferred switch lands when a prayer ends -- so a second copy in
      * localStorage could only ever drift out of step with the thing actually doing the work.
+     *
+     * `disabled` while the first status read is still in flight, which is also what the plugin
+     * itself defaults to. The two agreeing is what stops the page arming anything in the gap.
      */
     let mode = $derived<EngineMode>(status?.mode ?? "disabled");
     /** A switch waiting for the running session to finish. Null when nothing is queued. */
@@ -342,27 +345,8 @@
         void syncSchedule();
     }
 
-    /**
-     * The plugin defaults to detection mode so that callers written before modes existed keep
-     * working. That is the wrong default to inherit here -- a feature that silences your phone
-     * should not arm itself before anyone has asked it to -- so the first run turns it off.
-     */
-    async function bootstrap() {
-        await refreshStatus();
-        if (unsupported || settings.initialised) return;
-
-        try {
-            await setEngineMode("disabled", "immediate");
-            settings.initialised = true;
-            persist();
-            await refreshStatus();
-        } catch (cause) {
-            handleFailure(cause, "Could not set up the engine.");
-        }
-    }
-
     onMount(() => {
-        void bootstrap();
+        void refreshStatus();
 
         // design: one second, because the shutdown countdown is displayed in mm:ss. This also
         // re-derives the "next at" lines, so they roll over on their own at midnight.

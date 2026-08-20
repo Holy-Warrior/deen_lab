@@ -30,12 +30,12 @@ enum class EngineMode {
 
     companion object {
         /**
-         * Defaults to [ML] rather than [DISABLED] on purpose: an app built
-         * against an older version of this plugin never sets a mode, and ML is
-         * exactly what it used to get. Anything else would silently break those
-         * callers the moment they upgraded.
+         * A caller that never names a mode gets [DISABLED]. Modes have been
+         * part of this plugin's interface from its first release, so there is
+         * no earlier behaviour owed to anyone here - and a plugin that can
+         * silence the phone should stay inert until an app asks it not to.
          */
-        val DEFAULT = ML
+        val DEFAULT = DISABLED
 
         fun fromWire(value: String?): EngineMode {
             if (value.isNullOrBlank()) return DEFAULT

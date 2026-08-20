@@ -9,15 +9,16 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum EngineMode {
-    /// Nothing armed. Both schedules are kept.
+    /// Nothing armed. Both schedules are kept. The default: a plugin that can
+    /// silence the phone should stay inert until an app asks it not to.
+    #[default]
     Disabled,
     /// Clock-driven. Silences for a fixed window around a time you supply; no
     /// sensors, no model, no foreground service.
     Manual,
     /// Sensor-driven. A wake alarm starts the foreground service and the
-    /// on-device model decides. The plugin's original behaviour, and the
-    /// default so that callers written before modes existed are unaffected.
-    #[default]
+    /// on-device model decides. Adapts to when you actually pray, but can miss
+    /// a prayer entirely or silence you for merely sitting still.
     Ml,
 }
 
@@ -242,9 +243,9 @@ pub struct NativeStatusResponse {
     pub original_ringer_mode: Option<i32>,
     pub shutdown_deadline_millis: Option<i64>,
     pub scheduled_alarms: Vec<ScheduledAlarm>,
-    // Defaulted rather than required so a status payload written by a state
-    // file that predates manual mode still deserializes into something usable
-    // instead of failing the whole call.
+    // Defaulted rather than required so a status payload that omits a field -
+    // a partially written state file, say - still deserializes into something
+    // usable instead of failing the whole call.
     #[serde(default)]
     pub mode: EngineMode,
     #[serde(default)]
@@ -487,15 +488,15 @@ mod tests {
         assert_eq!(round_tripped, EngineMode::Manual);
     }
 
-    /// ML is the default so a caller written before modes existed keeps getting
-    /// the behaviour it has always had.
+    /// Nothing is armed until an app asks for a mode. This has to stay in step
+    /// with Kotlin's `EngineMode.DEFAULT`, which the native side reads back.
     #[test]
-    fn engine_mode_defaults_to_ml() {
-        assert_eq!(EngineMode::default(), EngineMode::Ml);
+    fn engine_mode_defaults_to_disabled() {
+        assert_eq!(EngineMode::default(), EngineMode::Disabled);
     }
 
-    /// A status payload from a state file that predates manual mode omits every
-    /// new field; it must still parse rather than failing the whole call.
+    /// A status payload missing every optional field must still parse rather
+    /// than failing the whole call.
     #[test]
     fn native_status_response_tolerates_a_payload_without_the_manual_fields() {
         let json = serde_json::json!({
@@ -520,7 +521,7 @@ mod tests {
         });
 
         let status: NativeStatusResponse = serde_json::from_value(json).unwrap();
-        assert_eq!(status.mode, EngineMode::Ml);
+        assert_eq!(status.mode, EngineMode::Disabled);
         assert!(status.manual_windows.is_empty());
         assert_eq!(status.active_manual_window_id, None);
         assert_eq!(status.manual_restore_at_millis, None);

@@ -20,13 +20,6 @@ export function isSilencedPrayer(id: PrayerId): id is SilencedPrayer {
  * and this file would only be a second copy to drift out of sync with it.
  */
 export interface AutoSilentSettings {
-    /**
-     * Whether this app has ever configured the engine. The plugin defaults to ML mode for the
-     * benefit of callers written before modes existed, which is not a default to inherit here:
-     * the feature must not arm itself before the user has asked for it. False means the page
-     * still owes the plugin a one-time switch to `disabled`.
-     */
-    initialised: boolean;
     /** Which of the five to watch for. */
     prayers: Record<SilencedPrayer, boolean>;
     /**
@@ -73,7 +66,6 @@ function everyPrayer<T>(value: T): Record<SilencedPrayer, T> {
 
 export function defaultSettings(): AutoSilentSettings {
     return {
-        initialised: false,
         prayers: everyPrayer(true),
         leadMinutes: 3,
         offsets: everyPrayer(0),
@@ -91,19 +83,13 @@ function clamp(value: unknown, min: number, max: number, fallback: number): numb
 /**
  * Reads whatever is on disk back into a fully-formed settings object. Every field is rebuilt
  * from defaults and only overwritten when the stored value is actually the right shape, so a
- * half-written or older record degrades into sane settings instead of throwing.
+ * half-written record degrades into sane settings instead of throwing.
  */
 function parse(raw: unknown): AutoSilentSettings {
     const settings = defaultSettings();
     if (typeof raw !== "object" || raw === null) return settings;
     const record = raw as Record<string, unknown>;
 
-    if (typeof record.initialised === "boolean") settings.initialised = record.initialised;
-    // a record written before modes existed has `enabled` and no `initialised`; it has plainly
-    // been configured already, so honour that rather than resetting the engine underneath it
-    if (typeof record.enabled === "boolean" && record.initialised === undefined) {
-        settings.initialised = true;
-    }
     settings.leadMinutes = clamp(record.leadMinutes, leadMinutesRange.min, leadMinutesRange.max, settings.leadMinutes);
 
     const prayers = record.prayers;

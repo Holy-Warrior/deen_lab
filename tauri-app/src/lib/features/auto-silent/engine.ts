@@ -18,7 +18,8 @@ export type AudioState = "default" | "silent";
  * clock for a fixed window. They are mutually exclusive natively: both write the same persisted
  * audio state, so running them together would mean two owners fighting over the ringer.
  *
- * Defaults to `ml` on a device that has never been told otherwise.
+ * Defaults to `disabled` on a device that has never been told otherwise, matching what this
+ * page shows before its first status read comes back.
  */
 export type EngineMode = "disabled" | "manual" | "ml";
 

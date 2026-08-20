@@ -17,12 +17,10 @@ second copy in `localStorage` could only drift out of step with the thing actual
 work, so `status.mode` is read as the source of truth and `settings` holds only what the plugin
 does not know about — which prayers, the lead time, the offsets, the durations.
 
-The one exception is a flag: the plugin defaults to detection mode for the benefit of callers
-written before modes existed, and inheriting that would mean a fresh install arms itself the
-moment permissions are granted. `settings.initialised` records that this app has had its say, and
-the first run explicitly switches the engine to `disabled`. A settings record written before modes
-existed counts as initialised — it plainly has been configured — so upgrading does not quietly
-switch anyone's feature off.
+There is nothing to hand over on first run, either. The plugin's own default mode is `disabled`,
+which is the same thing the page shows while the first status read is still in flight, so a fresh
+install starts off and stays off until someone picks a mode. That agreement is deliberate: it is
+what lets scheduling begin immediately instead of waiting on a handshake.
 
 | | Detection | By time |
 | --- | --- | --- |
@@ -174,8 +172,8 @@ for the full command list and the plugin's restore guarantees.
 `syncSchedule()` both reads `status` (to compare against what is already scheduled) and writes it
 (via `refreshStatus()` afterwards). Driving it from an effect that tracks those reads would mean
 every three-second status poll re-entered scheduling — and if the native side ever normalised a
-plan even slightly differently from what was sent, `alarmsMatch` would never be satisfied and the
-app would rewrite five alarms forever.
+plan even slightly differently from what was sent, the comparison that used to guard the write
+would never be satisfied and the app would rewrite the whole list forever.
 
 So the effect depends on exactly one thing: a derived `planSignature` string covering the active
 mode, any queued mode, the granted flag and the computed plan. The call itself is wrapped in
@@ -184,6 +182,24 @@ mode, any queued mode, the granted flag and the computed plan. The call itself i
 The signature is also what keeps the mode out of local state from becoming a loop. `mode` is
 derived from `status`, and `syncSchedule` writes `status` — but a three-second poll that returns
 the same mode produces the same signature, so `lastSynced` short-circuits it.
+
+## The two defaults have to agree
+
+For a while the plugin defaulted to detection mode and the page defaulted to off, and the gap
+between them was a real bug. The first status read came back reporting detection, which was
+enough for the sync effect to fire and arm five wake alarms — a beat before the page could tell
+the plugin to switch off. A fresh profile ended up with a state file reporting `mode: disabled`
+and five ML alarms sitting inside it, plus five live entries in `dumpsys alarm`: a feature that
+had armed itself before anyone asked.
+
+The first fix was a `ready` flag gating `syncSchedule` until the handshake finished. The better
+one was to remove the disagreement: the plugin now defaults to `disabled` too, so there is no
+window in which the page believes a working mode is active. Re-tested from a wiped profile:
+`mode: disabled`, `alarms: []`, and nothing in `dumpsys alarm`.
+
+The general point is worth keeping in mind for any future plugin state the page mirrors — a
+default on one side of the bridge that differs from the default on the other is a bug waiting for
+the right timing.
 
 ## Never trust the plugin's alarm list
 
@@ -203,6 +219,29 @@ it running on every render, and writing unconditionally makes the feature self-h
 the page is enough to recover from a force-stop, a crash, or anything else that clears alarms.
 Confirmed by force-stopping the app, watching `dumpsys alarm` drop to zero, and seeing all five
 come back on reopening the page.
+
+## Verified on a device
+
+Unit tests cover the planning arithmetic and the plugin's own state machine, but neither can say
+whether a real alarm fires on a real OEM Android. Exercised on a OnePlus CPH2421 running Android
+11, using a dev-only panel that schedules a throwaway window a minute out — waiting for a genuine
+prayer would have meant hours, since the offset range only reaches two hours either side of one:
+
+- A window fired from a real `AlarmManager` entry, silenced the ringer, and posted the
+  notification.
+- The ringer came back at the deadline **to the second**, and the state fields cleared.
+- Switching mode mid-silence produced the prompt, naming the window and its end time.
+- "Switch when this finishes" left the phone silent and queued the switch.
+- "Switch now" restored the ringer immediately and switched.
+- The laptop lost power mid-test, which turned into the best check of the lot: the phone finished
+  the deferred switch on its own — restored the ringer, applied the queued mode, and armed the
+  incoming mode's schedule — with nothing connected to it.
+- Force-stopping cleared every alarm, exactly the behaviour the persisted restore deadline exists
+  to survive.
+
+One thing that stayed dev-only: rescheduling from the app *while* a window is open cancels its
+pending alarms, and `rearmActiveEnd` puts the restore back. That path ran for real during the
+power-loss test and the restore still landed on time.
 
 ## Two errors, not one
 

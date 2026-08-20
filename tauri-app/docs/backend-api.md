@@ -292,7 +292,9 @@ manifest merger folds them into the app automatically.
 
 #### Three modes
 
-`set_engine_mode` picks between them, and `get_native_status().mode` reports which is active.
+`set_engine_mode` picks between them, and `get_native_status().mode` reports which is active. A
+device that has never been told otherwise reports `disabled`: the plugin can silence the phone, so
+it stays inert until an app asks it not to.
 
 | Mode | How it decides | Cost | Fails by |
 | --- | --- | --- | --- |
