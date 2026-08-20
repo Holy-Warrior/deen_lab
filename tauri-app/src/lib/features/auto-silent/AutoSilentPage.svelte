@@ -8,6 +8,7 @@
     import { fallbackLocation } from "$lib/components/location/cities";
     import type { Coordinates } from "$lib/services/location";
     import { prayerTimesService, type PrayerDay } from "$lib/features/prayer-times/service";
+    import DebugPanel from "./DebugPanel.svelte";
     import ModeSwitchDialog from "./ModeSwitchDialog.svelte";
     import PermissionChecklist from "./PermissionChecklist.svelte";
     import TimingsEditor from "./TimingsEditor.svelte";
@@ -406,6 +407,12 @@
 
     let lastSynced = "";
 
+    /** Debug only: re-push the real plan after a test window has replaced it. */
+    function resyncFromScratch() {
+        lastSynced = "";
+        void syncSchedule();
+    }
+
     $effect(() => {
         const signature = planSignature;
         // svelte: untrack keeps syncSchedule's own reads out of this effect's dependencies, so
@@ -531,6 +538,12 @@
                 </p>
             {/if}
         </section>
+
+        <!-- vite: import.meta.env.DEV is a build-time literal, so this whole block and the
+             component it pulls in are dropped from a release bundle -->
+        {#if import.meta.env.DEV}
+            <DebugPanel {status} onDone={resyncFromScratch} />
+        {/if}
 
         {#if !permissions?.allGranted}
             <section class="mb-4">
