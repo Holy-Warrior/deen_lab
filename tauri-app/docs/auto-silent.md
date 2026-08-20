@@ -201,6 +201,33 @@ The general point is worth keeping in mind for any future plugin state the page 
 default on one side of the bridge that differs from the default on the other is a bug waiting for
 the right timing.
 
+## The startup self-check
+
+Rewriting the schedule on page open only helps someone who opens that page. Open the app for
+prayer times, close it, and a schedule that Android quietly dropped stays dropped. So the repair
+runs from app start instead: `+layout.svelte` calls `scheduleStartupCheck()` five seconds after
+mount, which invokes the plugin's `verify_schedule`.
+
+It repairs from what the plugin has already persisted, which is what makes it possible this early
+— no location, no network, no prayer-time lookup. Stored windows and alarms are `hour`/`minute`
+repeating daily rather than date-stamped, so re-arming yesterday's copy is correct; the page
+refreshes the real times whenever it is next opened.
+
+Four things happen, in order: a silence that outlived its deadline is undone, a mode switch queued
+behind that session is applied, the active mode's schedule is re-armed, and anything still armed
+while the mode is `disabled` is torn down.
+
+**The re-arm is unconditional, and that is the whole point.** The first version only re-armed when
+its `FLAG_NO_CREATE` probe reported a missing alarm, which looked tidy and did not work: on a
+OnePlus CPH2421 the PendingIntents outlive a force-stop that clears every alarm, so the probe
+reported a fully armed schedule while `dumpsys alarm` held none of it, and the repair never ran.
+The probe is a one-sided signal — a missing intent proves the alarm is gone, a present one proves
+nothing — and the first version leaned on the side that proves nothing. Re-arming regardless costs
+one idempotent write and cannot be fooled. The probe now only decides *what to tell the user*.
+
+That asymmetry is worth remembering when reading a report: `strandedSilenceRestored` is derived
+from persisted state and is trustworthy, while `missingBefore` under-reports.
+
 ## Never trust the plugin's alarm list
 
 `getNativeStatus().scheduledAlarms` is the plugin's own persisted record of what it once

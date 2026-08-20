@@ -131,6 +131,12 @@ impl<R: Runtime> SilenceOfSalahEngine<R> {
             .map_err(Into::into)
     }
 
+    pub fn verify_schedule(&self) -> Result<ScheduleHealthReport> {
+        self.0
+            .run_mobile_plugin("verifySchedule", ())
+            .map_err(Into::into)
+    }
+
     pub fn get_permission_status(&self) -> Result<PermissionStatus> {
         self.0
             .run_mobile_plugin("getPermissionStatus", ())

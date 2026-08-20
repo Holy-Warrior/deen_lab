@@ -81,6 +81,33 @@ object AlarmScheduler {
         EngineLog.i(COMPONENT, "Disarmed ML wake alarms; schedule kept.")
     }
 
+    /**
+     * Ids from the persisted schedule that still have a live PendingIntent.
+     *
+     * `FLAG_NO_CREATE` hands back null when no matching intent exists. The
+     * signal is one-sided and must be read that way: a missing intent proves
+     * the alarm is gone, but a present one proves nothing. Measured on a
+     * OnePlus CPH2421 running Android 11, the intents outlive a force-stop that
+     * clears every alarm, so the probe cheerfully reports a fully armed
+     * schedule while `dumpsys alarm` holds none of it.
+     *
+     * Good enough to say "something is definitely broken", never good enough to
+     * decide not to repair - which is why [ScheduleHealth] re-arms regardless
+     * and uses this only to describe what it found.
+     */
+    fun armedAlarmIds(context: Context): List<Int> =
+        getAlarms(context).map { it.id }.filter { probe(context, it) != null }
+
+    private fun probe(context: Context, alarmId: Int): PendingIntent? =
+        PendingIntent.getBroadcast(
+            context,
+            alarmId,
+            // Extras are ignored when PendingIntents are matched, so a bare
+            // intent finds the one scheduled with an id and a kind attached.
+            Intent(context, AlarmReceiver::class.java),
+            PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE
+        )
+
     private fun cancelPendingIntents(context: Context) {
         val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
         getAlarms(context).forEach { alarm ->

@@ -11,6 +11,7 @@
     import DebugPanel from "./DebugPanel.svelte";
     import ModeSwitchDialog from "./ModeSwitchDialog.svelte";
     import PermissionChecklist from "./PermissionChecklist.svelte";
+    import { lastCheck } from "./health";
     import TimingsEditor from "./TimingsEditor.svelte";
     import {
         engineStatus, forceRestore, forceSilent, permissionStatus,
@@ -54,6 +55,12 @@
     let unsupported = $state(false);
     let busy = $state(false);
     let now = $state(new Date());
+    /**
+     * What the startup self-check found. Read once on mount rather than kept
+     * live: it runs seconds after launch and then not again, so polling it
+     * would only redraw the same sentence.
+     */
+    let checked = $state(lastCheck());
 
     /** The switch the user asked for, waiting on their answer to the dialog. */
     let blockedTarget = $state<EngineMode | null>(null);
@@ -523,6 +530,20 @@
             {/if}
         </section>
 
+        <!-- design: the self-check is silent by intent -- it repairs and moves on rather than
+             interrupting. This is where it owns up to what it did, so a ringer that came back on
+             its own is explainable instead of mysterious. Nothing is shown when it found the
+             schedule already in order. -->
+        {#if checked && (checked.repaired || !checked.healthy)}
+            <p class="check-note" class:check-note--bad={!checked.healthy}>
+                {#if checked.fixed}
+                    Checked at {formatClock(new Date(checked.checkedAt))} — {checked.fixed}.
+                {:else}
+                    Checked at {formatClock(new Date(checked.checkedAt))}.
+                {/if}
+            </p>
+        {/if}
+
         <!-- vite: import.meta.env.DEV is a build-time literal, so this whole block and the
              component it pulls in are dropped from a release bundle -->
         {#if import.meta.env.DEV}
@@ -672,6 +693,20 @@
 {/if}
 
 <style>
+    /* design: quiet by default -- this is a note about housekeeping, not a warning. It only
+       turns amber when the check could not put things right, which is the one case the user
+       may need to act on. */
+    .check-note {
+        margin-bottom: 1rem;
+        font-size: 0.75rem;
+        line-height: 1.4;
+        color: var(--app-muted);
+    }
+
+    .check-note--bad {
+        color: #fbbf24;
+    }
+
     .hero {
         display: flex;
         flex-direction: column;

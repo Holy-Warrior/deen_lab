@@ -243,3 +243,49 @@ export function forceSilent(): Promise<unknown> {
 export function forceRestore(): Promise<unknown> {
     return invoke(command("debug_restore_audio_default"));
 }
+
+/**
+ * What a {@link verifySchedule} pass found, and what it put right.
+ *
+ * `missingAfter` is re-measured after the repair rather than assumed empty: a
+ * re-arm is skipped outright when the exact-alarm permission has been revoked,
+ * and the check would rather admit the schedule is still broken than claim a
+ * fix it did not make.
+ */
+export interface ScheduleHealthReport {
+    mode: EngineMode;
+    checkedAtMillis: number;
+    /** How many entries the stored schedule says should be armed. */
+    expected: number;
+    /** Ids the probe could prove had no live alarm. One-sided: it under-reports. */
+    missingBefore: number[];
+    /** The same probe after the re-arm. Empty means "nothing provably missing". */
+    missingAfter: number[];
+    /** A fault was caught. The schedule is re-armed on every pass regardless. */
+    repaired: boolean;
+    /** Something was armed while the engine is off, and was torn down. */
+    disarmedWhileOff: boolean;
+    /** A silence had outlived its deadline, so the ringer was handed back. */
+    strandedSilenceRestored: boolean;
+    /** An open window had lost the alarm that ends it, and it was put back. */
+    restoreAlarmRearmed: boolean;
+    exactAlarmPermission: boolean;
+    allPermissionsGranted: boolean;
+    healthy: boolean;
+}
+
+/**
+ * Asks the plugin to confirm its schedule is really armed, and to re-arm it if
+ * it isn't.
+ *
+ * The plugin's own alarm list is a record of what it once scheduled, not a live
+ * query -- and Android silently drops every one of an app's alarms on a
+ * force-stop or a reboot. This is the only thing that notices without the user
+ * happening to open the Auto Silent page.
+ *
+ * Repairs from what the plugin has already stored, so it needs no location, no
+ * network and no prayer-time lookup, and re-arming is idempotent.
+ */
+export function verifySchedule(): Promise<ScheduleHealthReport> {
+    return invoke(command("verify_schedule"));
+}
