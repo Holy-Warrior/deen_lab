@@ -28,7 +28,9 @@ The Tauri version is a rewrite rather than a straight port, and it is not finish
   [silence_of_salah_engine](https://github.com/Holy-Warrior/silence_of_salah_engine), and so far
   only the Flutter app is wired up to it.
 - **Deliberately dropped** — the Hadith library. Its translations could not be licensed for
-  redistribution, so the feature was removed instead of shipped on unclear terms.
+  redistribution, so the feature was removed instead of shipped on unclear terms. The Flutter
+  app no longer ships the database either; its `lib/features/hadees/` code is left in place,
+  unused, in case the content is ever replaced with a source that can be shared.
 - **Rebuilt, not ported** — the Feature Studio. Both versions turn a plain-English description
   into a small tool, but the Tauri one runs each generated tool in a sandbox, keeps every
   version, and can revise a tool after it has been made.
@@ -42,8 +44,9 @@ Each app carries its own setup instructions:
 - [`flutter-app/README.md`](flutter-app/README.md)
 - [`tauri-app/README.md`](tauri-app/README.md)
 
-The Flutter app keeps its hadith database in Git LFS, so run `git lfs install` before cloning if
-you intend to build it. The Tauri app needs no LFS.
+Both apps read a Groq API key from a gitignored config file for their Feature Studio tool, and
+neither will compile until that file exists — each app's README says which template to copy.
+Nothing in this repository uses Git LFS.
 
 ## License
 

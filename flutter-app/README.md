@@ -46,6 +46,13 @@ DeenLab's Prayer Settings screen explains the dependency chain (reminders -> per
 - Flutter SDK (Dart SDK included)
 - Android Studio (Android SDK / emulator) or a physical Android device
 
+### Groq API Key
+
+Copy `lib/config/groq_config.dart.example` to `lib/config/groq_config.dart` and fill in a real
+key. That file is gitignored — every machine needs its own copy. The key is only used by the
+Feature Studio tool, but the app will not compile until the file exists, because two files under
+`lib/features/feature_studio/` import it.
+
 ### Run Locally
 
 ```bash
